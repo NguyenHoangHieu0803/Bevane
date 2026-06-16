@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0" />
+  <title>Bevane — Private chat, calls & notes</title>
+  <meta name="description" content="Private peer-to-peer messaging, voice and video calls, and AI-assisted notes." />
+
+  <!-- Theme / PWA -->
+  <meta name="theme-color" content="#0b3d91" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+
+  <!-- iOS Safari add-to-home-screen -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Bevane" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <!-- ===================== Splash / launch screen ===================== -->
+  <div id="splash" class="splash" role="status" aria-label="Bevane is loading">
+    <img class="splash__logo" src="/icons/icon.svg" alt="" width="96" height="96" />
+    <p class="splash__name">Bevane</p>
+    <p class="splash__tag">Private chat · calls · notes</p>
+  </div>
+
+  <!-- ===================== Onboarding ===================== -->
+  <div id="onboarding" class="onboarding" role="dialog" aria-modal="true" aria-labelledby="onboarding-title" hidden>
+    <div class="onboarding__card">
+      <img class="onboarding__logo" src="/icons/icon.svg" alt="" width="72" height="72" />
+      <h1 id="onboarding-title">Welcome to Bevane</h1>
+      <p>Pick a display name to start. No password, no email.</p>
+      <form id="onboarding-form" novalidate>
+        <label for="display-name">Display name</label>
+        <input
+          id="display-name"
+          name="displayName"
+          type="text"
+          autocomplete="name"
+          maxlength="40"
+          required
+          aria-describedby="display-name-error"
+          placeholder="e.g. Alex" />
+        <p id="display-name-error" class="field-error" role="alert" aria-live="assertive"></p>
+        <button type="submit" class="btn btn--primary">Start using Bevane</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== App ===================== -->
+  <div id="app" class="app" hidden>
+    <header class="app-header" role="banner">
+      <button id="back-btn" class="iconbtn app-header__back" type="button" aria-label="Back to list" hidden>
+        <span aria-hidden="true">‹</span>
+      </button>
+      <h1 id="view-title" class="app-header__title">Chats</h1>
+      <span id="self-name" class="app-header__self" aria-label="Your display name"></span>
+    </header>
+
+    <!-- Global live region for announcements (messages, call status) -->
+    <div id="live-region" class="visually-hidden" aria-live="polite" aria-atomic="false"></div>
+    <div id="alert-region" class="visually-hidden" role="alert" aria-live="assertive"></div>
+
+    <main id="main" class="app-main" tabindex="-1">
+
+      <!-- ---------- Chats view ---------- -->
+      <section id="view-chats" class="view" aria-labelledby="view-title-chats">
+        <h2 id="view-title-chats" class="visually-hidden">Conversations</h2>
+
+        <!-- Conversation list -->
+        <div id="chat-list-pane" class="pane">
+          <div class="list-actions list-actions--row">
+            <button id="new-chat-btn" class="btn btn--secondary" type="button">＋ New conversation</button>
+            <button id="new-group-btn" class="btn btn--secondary" type="button">👥 New group</button>
+          </div>
+          <ul id="conversation-list" class="conversation-list" aria-label="Conversations"></ul>
+          <p id="conversation-empty" class="empty-state" hidden>No conversations yet. Start one above.</p>
+          <ul id="group-list" class="conversation-list" aria-label="Groups" hidden></ul>
+        </div>
+
+        <!-- Single thread -->
+        <div id="thread-pane" class="pane thread-pane" hidden>
+          <div class="thread-header">
+            <span id="thread-peer-name" class="thread-header__name"></span>
+            <span id="thread-peer-presence" class="presence" aria-live="polite"></span>
+            <span class="thread-header__actions">
+              <button id="thread-search-btn" class="iconbtn" type="button" aria-label="Search messages in this conversation">
+                <span aria-hidden="true">🔍</span>
+              </button>
+              <button id="thread-voice-btn" class="iconbtn" type="button" aria-label="Start voice call">
+                <span aria-hidden="true">📞</span>
+              </button>
+              <button id="thread-video-btn" class="iconbtn" type="button" aria-label="Start video call">
+                <span aria-hidden="true">🎥</span>
+              </button>
+              <button id="thread-summary-btn" class="iconbtn" type="button" aria-label="AI chat summary">
+                <span aria-hidden="true">📄</span>
+              </button>
+              <button id="thread-gennote-btn" class="iconbtn" type="button" aria-label="Generate AI note from this conversation">
+                <span aria-hidden="true">✦</span>
+              </button>
+            </span>
+          </div>
+
+          <div id="message-search" class="message-search" hidden>
+            <label for="message-search-input" class="visually-hidden">Search messages</label>
+            <input id="message-search-input" type="search" placeholder="Search messages…" aria-label="Search loaded messages" />
+          </div>
+
+          <ol id="message-list" class="message-list" aria-label="Messages"></ol>
+
+          <p id="typing-indicator" class="typing-indicator" aria-live="polite" hidden></p>
+
+          <div id="smart-reply-bar" class="smart-reply-bar" role="group" aria-label="AI smart-reply suggestions" hidden></div>
+
+          <div id="reply-bar" class="reply-bar" hidden>
+            <span class="reply-bar__icon" aria-hidden="true">↩︎</span>
+            <span id="reply-bar-text" class="reply-bar__text"></span>
+            <button id="reply-bar-cancel" class="iconbtn" type="button" aria-label="Cancel reply">
+              <span aria-hidden="true">✕</span>
+            </button>
+          </div>
+
+          <form id="message-form" class="message-form">
+            <label for="message-input" class="visually-hidden">Type a message</label>
+            <button id="attach-btn" class="iconbtn" type="button" aria-label="Attach media">
+              <span aria-hidden="true">＋</span>
+            </button>
+            <button id="tone-btn" class="iconbtn" type="button" aria-label="Adjust tone with AI">
+              <span aria-hidden="true">🎚️</span>
+            </button>
+            <button id="smart-reply-btn" class="iconbtn" type="button" aria-label="Get AI smart-reply suggestions">
+              <span aria-hidden="true">✨</span>
+            </button>
+            <input
+              id="message-input"
+              name="body"
+              type="text"
+              autocomplete="off"
+              placeholder="Message…"
+              aria-label="Message text" />
+            <button id="message-send" class="iconbtn iconbtn--accent" type="submit" aria-label="Send message">
+              <span aria-hidden="true">➤</span>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- ---------- Calls (combined voice + video) view ---------- -->
+      <section id="view-calls" class="view" aria-labelledby="view-title-calls" hidden>
+        <h2 id="view-title-calls" class="visually-hidden">Call history</h2>
+        <div class="pane">
+          <button id="new-call-btn" class="btn btn--secondary" type="button">＋ New call</button>
+          <div class="call-filters" role="tablist" aria-label="Filter calls">
+            <button class="call-filter call-filter--active" type="button" role="tab" aria-selected="true" data-filter="all">All</button>
+            <button class="call-filter" type="button" role="tab" aria-selected="false" data-filter="voice">Voice</button>
+            <button class="call-filter" type="button" role="tab" aria-selected="false" data-filter="video">Video</button>
+            <button class="call-filter" type="button" role="tab" aria-selected="false" data-filter="missed">Missed</button>
+          </div>
+          <ul id="call-log" class="call-log" aria-label="Call history"></ul>
+          <p id="call-empty" class="empty-state" hidden>No calls yet.</p>
+        </div>
+      </section>
+
+      <!-- ---------- Notes view ---------- -->
+      <section id="view-notes" class="view" aria-labelledby="view-title-notes" hidden>
+        <h2 id="view-title-notes" class="visually-hidden">Notes</h2>
+        <div id="notes-list-pane" class="pane">
+          <div class="list-actions">
+            <button id="new-note-btn" class="btn btn--secondary" type="button">＋ New note</button>
+          </div>
+          <div class="notes-search">
+            <label for="notes-search-input" class="visually-hidden">Search notes</label>
+            <input id="notes-search-input" type="search" placeholder="Search notes…" aria-label="Search notes" />
+          </div>
+          <div id="notes-folders" class="folder-tabs" role="tablist" aria-label="Note folders"></div>
+          <ul id="notes-list" class="notes-list" aria-label="Notes"></ul>
+          <p id="notes-empty" class="empty-state" hidden>No notes yet. Create one above.</p>
+        </div>
+
+        <div id="note-editor-pane" class="pane note-editor" hidden>
+          <form id="note-form">
+            <p id="note-ai-badge" class="ai-badge" hidden>✦ AI-generated</p>
+            <label for="note-title">Title</label>
+            <input id="note-title" name="title" type="text" maxlength="120" placeholder="Note title" />
+
+            <div class="note-meta-row" role="group" aria-label="Note options">
+              <button id="note-pin-btn" type="button" class="chip-btn" aria-pressed="false">📌 Pin</button>
+              <button id="note-lock-btn" type="button" class="chip-btn" aria-pressed="false">🔓 Lock</button>
+              <button id="note-folder-btn" type="button" class="chip-btn">📁 Folder</button>
+              <button id="note-reminder-btn" type="button" class="chip-btn">⏰ Reminder</button>
+            </div>
+            <div class="note-meta-labels">
+              <span id="note-folder-label" class="meta-label">No folder</span>
+              <span id="note-reminder-label" class="meta-label">No reminder</span>
+            </div>
+
+            <div class="note-color-section">
+              <span class="meta-label" id="color-label">Color label</span>
+              <div id="note-color-row" class="color-row" role="group" aria-labelledby="color-label"></div>
+            </div>
+
+            <label for="note-body">Body</label>
+            <textarea id="note-body" name="body" rows="8" placeholder="Write your note…"></textarea>
+
+            <div class="checklist-section">
+              <div class="checklist-head">
+                <span class="meta-label">Checklist</span>
+                <button id="note-checklist-add" type="button" class="chip-btn">＋ Item</button>
+              </div>
+              <div id="note-checklist"></div>
+            </div>
+
+            <details class="ai-tools">
+              <summary>AI tools (offline demo)</summary>
+              <div class="ai-tools__grid">
+                <button id="note-ai-write" type="button" class="chip-btn">✍️ Write assist</button>
+                <button id="note-ai-summarize" type="button" class="chip-btn">📄 Summarize</button>
+                <button id="note-ai-tags" type="button" class="chip-btn">🏷️ Smart tags</button>
+                <button id="note-ai-actions" type="button" class="chip-btn">✅ Action items</button>
+                <button id="note-ai-ask" type="button" class="chip-btn">❓ Ask AI</button>
+                <button id="note-grammar-btn" type="button" class="chip-btn">📝 Grammar</button>
+              </div>
+            </details>
+
+            <details class="ai-tools">
+              <summary>More (coming soon)</summary>
+              <div class="ai-tools__grid">
+                <button id="note-richtext-btn" type="button" class="chip-btn">𝐁 Rich text</button>
+                <button id="note-image-btn" type="button" class="chip-btn">🖼️ Image</button>
+                <button id="note-voice-btn" type="button" class="chip-btn">🎤 Voice note</button>
+                <button id="note-export-btn" type="button" class="chip-btn">📤 Export PDF</button>
+              </div>
+            </details>
+
+            <div class="note-editor__actions">
+              <button type="submit" class="btn btn--primary">Save</button>
+              <button id="note-delete-btn" type="button" class="btn btn--danger" hidden>Delete</button>
+              <button id="note-cancel-btn" type="button" class="btn btn--secondary">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ---------- Profile view ---------- -->
+      <section id="view-profile" class="view" aria-labelledby="view-title-profile" hidden>
+        <h2 id="view-title-profile" class="visually-hidden">Profile</h2>
+        <div class="pane">
+          <div class="profile-card">
+            <div id="profile-avatar" class="profile-avatar" aria-hidden="true">?</div>
+            <button id="profile-avatar-btn" class="btn btn--secondary" type="button">Change avatar</button>
+            <p id="profile-display-name" class="profile-name"></p>
+            <p id="profile-id" class="meta-label profile-id"></p>
+          </div>
+
+          <ul class="profile-actions" aria-label="Profile actions">
+            <li><button id="profile-qr-btn" class="profile-row" type="button">📱 My QR code</button></li>
+            <li><button id="profile-scanqr-btn" class="profile-row" type="button">📷 Scan QR</button></li>
+            <li><button id="profile-editname-btn" class="profile-row" type="button">✏️ Edit display name</button></li>
+            <li><button id="profile-password-btn" class="profile-row" type="button">🔑 Change password</button></li>
+          </ul>
+
+          <div class="profile-section">
+            <h3 class="profile-section__title">Notification settings</h3>
+            <label class="notif-row"><span>Message notifications</span>
+              <input type="checkbox" class="notif-toggle" data-label="Message notifications" checked /></label>
+            <label class="notif-row"><span>Call notifications</span>
+              <input type="checkbox" class="notif-toggle" data-label="Call notifications" checked /></label>
+            <label class="notif-row"><span>Do not disturb</span>
+              <input type="checkbox" class="notif-toggle" data-label="Do not disturb" /></label>
+          </div>
+
+          <button id="profile-logout-btn" class="btn btn--danger profile-logout" type="button">Log out</button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ---------- Bottom tab bar (Chats / Calls / Notes / Profile) ---------- -->
+    <nav class="tabbar" aria-label="Primary">
+      <ul role="tablist" class="tabbar__list">
+        <li role="presentation">
+          <button class="tab" id="tab-chats" role="tab" aria-selected="true" aria-controls="view-chats" data-view="chats">
+            <span class="tab__icon" aria-hidden="true">💬</span>
+            <span class="tab__label">Chats</span>
+          </button>
+        </li>
+        <li role="presentation">
+          <button class="tab" id="tab-calls" role="tab" aria-selected="false" aria-controls="view-calls" data-view="calls">
+            <span class="tab__icon" aria-hidden="true">📞</span>
+            <span class="tab__label">Calls</span>
+          </button>
+        </li>
+        <li role="presentation">
+          <button class="tab" id="tab-notes" role="tab" aria-selected="false" aria-controls="view-notes" data-view="notes">
+            <span class="tab__icon" aria-hidden="true">📝</span>
+            <span class="tab__label">Notes</span>
+          </button>
+        </li>
+        <li role="presentation">
+          <button class="tab" id="tab-profile" role="tab" aria-selected="false" aria-controls="view-profile" data-view="profile">
+            <span class="tab__icon" aria-hidden="true">👤</span>
+            <span class="tab__label">Profile</span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <!-- ===================== Peer picker dialog ===================== -->
+  <div id="peer-picker" class="modal" role="dialog" aria-modal="true" aria-labelledby="peer-picker-title" hidden>
+    <div class="modal__card">
+      <h2 id="peer-picker-title">Choose a contact</h2>
+      <ul id="peer-list" class="peer-list" aria-label="Registered users"></ul>
+      <p id="peer-empty" class="empty-state" hidden>No other users have registered yet. Open Bevane in another tab to add one.</p>
+      <button id="peer-picker-close" class="btn btn--secondary" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ===================== Attach sheet (media stubs) ===================== -->
+  <div id="attach-sheet" class="modal" role="dialog" aria-modal="true" aria-label="Attach media" hidden>
+    <div class="modal__card">
+      <h2>Attach</h2>
+      <div class="attach-grid">
+        <button class="chip-btn" type="button" data-attach="image">🖼️ Image</button>
+        <button class="chip-btn" type="button" data-attach="video">🎬 Video</button>
+        <button class="chip-btn" type="button" data-attach="voice message">🎤 Voice</button>
+        <button class="chip-btn" type="button" data-attach="file">📎 File</button>
+        <button class="chip-btn" type="button" data-attach="location">📍 Location</button>
+        <button class="chip-btn" type="button" data-attach="contact">👤 Contact</button>
+      </div>
+      <button id="attach-sheet-close" class="btn btn--secondary" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ===================== New group dialog ===================== -->
+  <div id="group-dialog" class="modal" role="dialog" aria-modal="true" aria-labelledby="group-title" hidden>
+    <div class="modal__card">
+      <h2 id="group-title">New group</h2>
+      <form id="group-form">
+        <label for="group-name-input">Group name</label>
+        <input id="group-name-input" type="text" maxlength="60" placeholder="e.g. Project team" />
+        <p class="meta-label">Add members</p>
+        <div id="group-member-list" class="group-member-list"></div>
+        <div class="note-editor__actions">
+          <button type="submit" class="btn btn--primary">Create group</button>
+          <button id="group-cancel" type="button" class="btn btn--secondary">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== My QR dialog ===================== -->
+  <div id="qr-dialog" class="modal" role="dialog" aria-modal="true" aria-labelledby="qr-title" hidden>
+    <div class="modal__card qr-card">
+      <h2 id="qr-title">My QR code</h2>
+      <p class="meta-label">Others can scan this to add you on Bevane.</p>
+      <canvas id="qr-canvas" class="qr-canvas" aria-label="Your Bevane QR code"></canvas>
+      <p id="qr-payload" class="meta-label qr-payload"></p>
+      <button id="qr-close" class="btn btn--secondary" type="button">Close</button>
+    </div>
+  </div>
+
+  <!-- ===================== Edit name dialog ===================== -->
+  <div id="editname-dialog" class="modal" role="dialog" aria-modal="true" aria-labelledby="editname-title" hidden>
+    <div class="modal__card">
+      <h2 id="editname-title">Edit display name</h2>
+      <form id="editname-form">
+        <label for="editname-input">Display name</label>
+        <input id="editname-input" type="text" maxlength="40" />
+        <div class="note-editor__actions">
+          <button type="submit" class="btn btn--primary">Save</button>
+          <button id="editname-cancel" type="button" class="btn btn--secondary">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== Call overlay ===================== -->
+  <div id="call-overlay" class="call-overlay" role="dialog" aria-modal="true" aria-labelledby="call-status-text" hidden>
+    <div class="call-overlay__videos">
+      <video id="remote-video" class="call-video call-video--remote" autoplay playsinline></video>
+      <video id="local-video" class="call-video call-video--local" autoplay playsinline muted></video>
+      <span id="call-quality" class="call-quality" aria-label="Connection quality: good">📶 Good</span>
+    </div>
+    <div class="call-overlay__info">
+      <p id="call-peer-name" class="call-overlay__peer"></p>
+      <p id="call-status-text" class="call-overlay__status" aria-live="assertive"></p>
+    </div>
+    <div class="call-overlay__controls" role="group" aria-label="Call controls">
+      <button id="call-accept-btn" class="callbtn callbtn--accept" type="button" aria-label="Accept call" hidden>
+        <span aria-hidden="true">✔</span><span class="callbtn__label">Accept</span>
+      </button>
+      <button id="call-decline-btn" class="callbtn callbtn--decline" type="button" aria-label="Decline call" hidden>
+        <span aria-hidden="true">✖</span><span class="callbtn__label">Decline</span>
+      </button>
+      <button id="call-mute-btn" class="callbtn" type="button" aria-pressed="false" aria-label="Mute microphone" hidden>
+        <span aria-hidden="true">🎙️</span><span class="callbtn__label">Mute</span>
+      </button>
+      <button id="call-camera-btn" class="callbtn" type="button" aria-pressed="false" aria-label="Turn camera off" hidden>
+        <span aria-hidden="true">📷</span><span class="callbtn__label">Camera</span>
+      </button>
+      <button id="call-switchcam-btn" class="callbtn" type="button" aria-label="Switch camera" hidden>
+        <span aria-hidden="true">🔄</span><span class="callbtn__label">Flip</span>
+      </button>
+      <button id="call-speaker-btn" class="callbtn" type="button" aria-label="Toggle speaker" hidden>
+        <span aria-hidden="true">🔊</span><span class="callbtn__label">Speaker</span>
+      </button>
+      <button id="call-hold-btn" class="callbtn" type="button" aria-label="Hold call" hidden>
+        <span aria-hidden="true">⏸️</span><span class="callbtn__label">Hold</span>
+      </button>
+      <button id="call-switchvideo-btn" class="callbtn" type="button" aria-label="Switch to video call" hidden>
+        <span aria-hidden="true">🎥</span><span class="callbtn__label">Video</span>
+      </button>
+      <button id="call-addparticipant-btn" class="callbtn" type="button" aria-label="Add participant" hidden>
+        <span aria-hidden="true">➕</span><span class="callbtn__label">Add</span>
+      </button>
+      <button id="call-pip-btn" class="callbtn" type="button" aria-label="Picture in picture" hidden>
+        <span aria-hidden="true">🗗</span><span class="callbtn__label">PiP</span>
+      </button>
+      <button id="call-end-btn" class="callbtn callbtn--decline" type="button" aria-label="End call" hidden>
+        <span aria-hidden="true">⛔</span><span class="callbtn__label">End</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================== Toast ===================== -->
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
