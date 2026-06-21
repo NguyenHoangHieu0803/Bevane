@@ -1,6 +1,6 @@
 {
   "name": "bevane",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Bevane — private peer-to-peer messaging, voice/video calling, and AI-assisted notes (PWA demo backend)",
   "type": "commonjs",
   "main": "server.js",

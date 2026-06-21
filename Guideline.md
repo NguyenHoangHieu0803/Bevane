@@ -14,17 +14,45 @@ A practical guide to running, using, testing, and extending **Bevane**, the priv
 - Node.js 18+ (developed on Node 24) and npm
 - A GitHub Codespace (for public URL forwarding) or any host where you can expose a port over HTTPS
 
-### Run locally
+### Step 1 — Install dependencies (first time only)
 ```bash
+cd /workspaces/Bevane
 npm install
-node server.js
-```
-The server boots on **port 3000** (override with `PORT`), serving the API, WebSocket, and the PWA from the same origin:
-```
-http://localhost:3000
 ```
 
-### Make it scannable on a phone (Codespaces)
+### Step 2 — Start the server
+```bash
+node server.js
+```
+The server boots on **port 3000**, serving the API, WebSocket, and the PWA from the same origin. You should see:
+```
+[bevane] HTTP + WS listening on http://0.0.0.0:3000
+[bevane] WebSocket endpoint: ws://<host>:3000/ws
+[bevane] SQLite DB: /workspaces/Bevane/data/bevane.db
+[bevane] Serving static frontend from: /workspaces/Bevane/public
+```
+
+### Step 3 — Open a public HTTPS tunnel (required for mobile / WebRTC)
+
+**Option A — localtunnel (fixed URL `https://bevane.loca.lt`)**
+
+Open a **second terminal** and run:
+```bash
+node -e "
+const localtunnel = require('localtunnel');
+(async () => {
+  const tunnel = await localtunnel({ port: 3000, subdomain: 'bevane' });
+  console.log('Tunnel URL:', tunnel.url);
+  tunnel.on('error', (err) => console.error('Tunnel error:', err));
+  tunnel.on('close', () => console.log('Tunnel closed'));
+})().catch(console.error);
+"
+```
+When you see `Tunnel URL: https://bevane.loca.lt` the tunnel is live.
+
+> **loca.lt bypass page:** On the first visit, loca.lt shows a page asking you to confirm your IP. Click **"Click to Submit"** on that page, then navigate back to `https://bevane.loca.lt`.
+
+**Option B — GitHub Codespaces port forwarding**
 ```bash
 # expose the port publicly
 gh codespace ports visibility 3000:public -c "$CODESPACE_NAME"
@@ -32,9 +60,16 @@ gh codespace ports visibility 3000:public -c "$CODESPACE_NAME"
 # the public URL follows this pattern:
 echo "https://${CODESPACE_NAME}-3000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
 ```
-Then regenerate the QR code (see [§6](#6-generating-the-qr-code)) and scan it with the iPhone Camera app.
 
-> ⚠️ iOS Safari requires **HTTPS** for camera/microphone (WebRTC). The Codespace public URL is HTTPS, so calling/video works; plain `http://localhost` will not grant media access on a phone.
+> ⚠️ iOS Safari requires **HTTPS** for camera/microphone (WebRTC). Both options above provide HTTPS; plain `http://localhost` will not grant media access on a phone.
+
+### Why "503 - Tunnel Unavailable"?
+
+This error from `bevane.loca.lt` means one of two things:
+1. **The server is not running** — start it with `node server.js` (Step 2 above).
+2. **The tunnel is not running** — start it with the localtunnel command in Step 3.
+
+Both the server **and** the tunnel must be running simultaneously. If you restart your Codespace or terminal, you need to restart both.
 
 ---
 

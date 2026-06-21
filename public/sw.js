@@ -6,7 +6,7 @@
      - navigations      -> serve cached index.html when offline.
 */
 
-const CACHE = 'bevane-shell-v4';
+const CACHE = 'bevane-shell-v5';
 const SHELL = [
   '/',
   '/index.html',

@@ -109,6 +109,10 @@ function initNav() {
 // --------------------------------------------------------------- boot
 async function boot() {
   registerServiceWorker();
+  // Hide the splash before showing any interactive UI. The splash z-index (800)
+  // is above the onboarding form (500), so without this the splash permanently
+  // blocks new users from registering. (BUG-CRITICAL-001)
+  hideSplash();
   await ensureRegistered();
 
   // identity ready
@@ -137,9 +141,6 @@ async function boot() {
 
   connect();
   showView('chats');
-
-  // Hide splash once the app shell is ready.
-  hideSplash();
 }
 
 function hideSplash() {

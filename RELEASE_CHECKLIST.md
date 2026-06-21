@@ -184,3 +184,36 @@
 4. **PWA install / offline shell** — confirm on-device over HTTPS (markup/manifest/SW v4 correct).
 
 ## VERDICT (v3): **GO** (with the manual-confirm caveats above)
+
+---
+
+# ROUND 4 (v1.0.1) — Critical Bugfix: Splash blocks onboarding
+
+**Gate owner:** Developer · **Date:** 2026-06-21
+**Scope:** Single critical regression that makes the app unusable for all new (unregistered) users.
+
+## Bug: BUG-CRITICAL-001 — Splash permanently blocks onboarding form
+
+**Symptom:** Opening `bevane.loca.lt` in a fresh browser session shows the Bevane splash screen with no way to proceed. The app is permanently stuck — no input is available.
+
+**Root cause (two layers):**
+1. In `app.js`, `hideSplash()` was called at the **end** of `boot()`, after `await ensureRegistered()`. Since `ensureRegistered()` shows the onboarding form and then **waits** for the user to submit it, the splash screen stayed visible for the entire onboarding period.
+2. Even if the splash had faded naturally, the onboarding `z-index: 500` was below the splash `z-index: 800`, so the form was permanently hidden behind the splash regardless of timing.
+
+**Affected users:** 100% of new/unregistered users (fresh browser, incognito, any device). Registered users (returning, with `localStorage` credentials) were unaffected because they skip `ensureRegistered()` entirely, so the splash was hidden before they noticed.
+
+**Why prior QC missed it:** The Round 2 and Round 3 QC passes were run with a pre-seeded database and an already-registered test user in `localStorage`. The onboarding code path was never exercised.
+
+## Fix
+- [x] `app.js`: Moved `hideSplash()` to the top of `boot()`, before `await ensureRegistered()`. Splash now clears before any interactive UI is shown.
+- [x] `styles.css`: Raised `.onboarding { z-index }` from 500 → 900 (above splash's 800) as defense-in-depth.
+- [x] `sw.js`: Cache bumped `bevane-shell-v4` → `bevane-shell-v5` to force cache invalidation for users who may have cached the broken version.
+- [x] `package.json`: Version bumped `1.0.0` → `1.0.1`.
+
+## Regression checks
+- [x] New user (no localStorage): splash hides → onboarding form appears → user enters name → app loads
+- [x] Returning user (localStorage set): splash hides → app loads directly (onboarding skipped)
+- [x] `boot()` failure path: `.catch(hideSplash)` still present (splash never gets stuck)
+- [x] SW cache v5 causes old SW to deactivate and serve updated `app.js` + `styles.css`
+
+## VERDICT (v1.0.1): **GO** — critical blocker resolved
