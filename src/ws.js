@@ -222,6 +222,12 @@ function attachWebSocketServer(httpServer) {
         return;
       }
 
+      // ---- Keepalive (client pings every 25 s to hold the connection through
+      //      mobile-carrier NATs and reverse-proxy idle timeouts) ----
+      case 'ping':
+        send(ws, { type: 'pong' });
+        return;
+
       default:
         return sendError(ws, 'unknown_type', `Unknown frame type: ${type}`);
     }

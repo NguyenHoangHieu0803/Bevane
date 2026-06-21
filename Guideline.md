@@ -258,7 +258,33 @@ Bevane/
 
 ---
 
-## 9. Known Limitations
+## 9. Platforms & Services
+
+A summary of every external platform and service Bevane relies on — what each one does and whether it is required in production, development, or both.
+
+| Platform / Service | Role | Required in | Notes |
+|--------------------|------|-------------|-------|
+| **[Render.com](https://render.com)** | Production cloud hosting — runs `node server.js`, auto-deploys on every push to `main` | Production | Free tier spins down after ~15 min idle; Starter plan ($7/mo) keeps it always-on |
+| **[GitHub](https://github.com/NguyenHoangHieu0803/Bevane)** | Source code hosting and CI/CD trigger — Render pulls from `main` on each push | Production + Dev | Also required for Codespaces |
+| **[GitHub Codespaces](https://github.com/features/codespaces)** | Cloud development environment where the app is built and run | Dev only | Provides the Linux container, Node.js 24, and the VS Code IDE |
+| **[localtunnel](https://localtunnel.github.io/www/) (`loca.lt`)** | Exposes local port 3000 as `https://bevane.loca.lt` so phones and WebRTC can reach the dev server over HTTPS | Dev only | Requires both `node server.js` and the tunnel process to be running; not needed when deployed to Render |
+| **Google STUN (`stun.l.google.com:19302`)** | WebRTC ICE server — assists peers in discovering their public IP/port for NAT traversal during voice and video calls | Production + Dev | Free public server; no API key. No TURN server is configured — calls may fail across symmetric NATs |
+| **Node.js built-in `node:sqlite`** | Embedded SQLite database via the `DatabaseSync` API built into Node.js 22+ (stable in Node.js 24) — no separate database server | Production + Dev | Zero native binaries; replaces the previous `better-sqlite3` C++ addon. Data file: `data/bevane.db` |
+
+### What Bevane does NOT use
+
+| Category | Not used | Reason |
+|----------|----------|--------|
+| External AI API | OpenAI, Anthropic, etc. | AI note-gen and smart-reply run fully offline in [`src/ai.js`](src/ai.js) |
+| Auth provider | Auth0, Firebase Auth, Clerk, etc. | No passwords — identity is a display name + UUID in `localStorage` (demo scope) |
+| Push notification service | FCM, APNs, etc. | No server-side push; real-time delivery uses the open WebSocket connection |
+| CDN | Cloudflare, Fastly, etc. | Static assets are served directly from Express; low traffic demo |
+| Container registry / Docker | — | Render manages the Node.js runtime; no Dockerfile needed |
+| TURN server | Twilio, Metered, etc. | STUN-only; direct P2P works on most home/mobile networks |
+
+---
+
+## 10. Known Limitations
 
 - **PWA, not native** — no App Store binary; distribution is via the public URL + QR.
 - **STUN only, no TURN** — calls may fail across restrictive/symmetric NATs.

@@ -443,7 +443,23 @@ export function initChats() {
     if (!$('#chat-list-pane').hidden) loadConversations();
   });
 
-  on('ws:ready', () => { if (!$('#view-chats').hidden) loadConversations(); });
+  on('ws:ready', () => {
+    if (!$('#view-chats').hidden) loadConversations();
+    // After a reconnect, catch up on any messages that arrived while the
+    // WebSocket was down (mobile network drops, proxy idle-timeout, etc.).
+    if (state.activeConversationId && !$('#thread-pane').hidden) {
+      api.listMessages(state.activeConversationId, { limit: 50 })
+        .then((messages) => {
+          for (const m of messages) {
+            if (!messageNodes.has(m.id)) {
+              appendMessage(m);
+              scrollMessages();
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  });
 
   // Back button handled by app.js navigation, but expose closeThread.
   on('thread:close', closeThread);
