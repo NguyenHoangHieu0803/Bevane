@@ -2,7 +2,7 @@ services:
   - type: web
     name: bevane
     runtime: node
-    buildCommand: npm install --omit=dev
+    buildCommand: npm install --omit=dev && npm rebuild better-sqlite3 --build-from-source
     startCommand: node server.js
     healthCheckPath: /api/users
     envVars:
