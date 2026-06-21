@@ -72,11 +72,9 @@ app.post('/api/auth/register', wrap((req, res) => {
   const { username, password, displayName } = req.body || {};
   const u  = String(username    || '').trim();
   const p  = String(password    || '');
-  const dn = String(displayName || '').trim();
+  // Fall back to username so old cached clients still work during SW transition.
+  const dn = String(displayName || username || '').trim().slice(0, 40);
 
-  if (!dn || dn.length > 40) {
-    return err(res, 400, 'invalid_display_name', 'Display name is required and must be 1–40 characters.');
-  }
   if (!u || u.length < 2 || u.length > 30) {
     return err(res, 400, 'invalid_username', 'Username must be 2–30 characters.');
   }
