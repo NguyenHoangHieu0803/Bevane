@@ -12,7 +12,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
+const { DatabaseSync } = require('node:sqlite');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DB_PATH = process.env.BEVANE_DB || path.join(DATA_DIR, 'bevane.db');
@@ -20,9 +20,9 @@ const DB_PATH = process.env.BEVANE_DB || path.join(DATA_DIR, 'bevane.db');
 // Ensure the data directory exists.
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+const db = new DatabaseSync(DB_PATH);
+db.exec('PRAGMA journal_mode = WAL');
+db.exec('PRAGMA foreign_keys = ON');
 
 function now() {
   return Date.now();
@@ -372,10 +372,14 @@ const stmtUnreadIncoming = db.prepare(
 );
 function markConversationRead(conversationId, userId) {
   const rows = stmtUnreadIncoming.all(conversationId, userId);
-  const txn = db.transaction((items) => {
-    for (const r of items) stmtUpdateMessageStatus.run('read', r.id);
-  });
-  txn(rows);
+  db.exec('BEGIN');
+  try {
+    for (const r of rows) stmtUpdateMessageStatus.run('read', r.id);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
   return rows.map(mapMessage);
 }
 
@@ -572,11 +576,15 @@ function createGroup({ ownerId, name, memberIds = [] }) {
   const ts = now();
   // Owner is always a member; de-dupe.
   const members = [...new Set([ownerId, ...memberIds])];
-  const txn = db.transaction(() => {
+  db.exec('BEGIN');
+  try {
     stmtInsertGroup.run(id, name, ownerId, ts);
     for (const uid of members) stmtInsertGroupMember.run(id, uid, ts);
-  });
-  txn();
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
   return mapGroup(stmtGetGroup.get(id));
 }
 
