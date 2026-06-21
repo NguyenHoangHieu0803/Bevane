@@ -3,7 +3,7 @@
 import { state, on, emit } from './state.js';
 import { connect } from './ws.js';
 import { ensureRegistered } from './onboarding.js';
-import { $, $$, show, hide, toast } from './ui.js';
+import { $, $$, show, hide, toast, isTwoPane, onTwoPaneChange } from './ui.js';
 
 import { initChats, loadConversations, openThread, closeThread } from './chats.js';
 import { initCalls } from './webrtc.js';
@@ -23,10 +23,12 @@ function showView(view) {
     const v = $(`#view-${name}`);
     if (v) v.hidden = name !== view;
   }
-  for (const tab of $$('.tab')) {
-    const sel = tab.dataset.view === view;
-    tab.setAttribute('aria-selected', String(sel));
-    tab.tabIndex = sel ? 0 : -1;
+  // Keep the bottom tab bar (mobile) and the sidebar nav (desktop) in sync —
+  // they are the same logical nav, shown one per breakpoint by CSS.
+  for (const nav of $$('.tab, .sidenav')) {
+    const sel = nav.dataset.view === view;
+    nav.setAttribute('aria-selected', String(sel));
+    nav.tabIndex = sel ? 0 : -1;
   }
   $('#view-title').textContent = VIEW_TITLES[view];
   updateBackButton();
@@ -39,11 +41,13 @@ function showView(view) {
   $('#main').focus();
 }
 
-// Back button appears for sub-panes (thread, note editor).
+// Back button appears for sub-panes (thread, note editor) in single-column
+// (mobile) mode only. In two-pane mode both panes are visible, so there is
+// nothing to go "back" from — the back button stays hidden.
 function updateBackButton() {
   const inThread = currentView === 'chats' && !$('#thread-pane').hidden;
   const inEditor = currentView === 'notes' && isNoteEditorOpen();
-  $('#back-btn').hidden = !(inThread || inEditor);
+  $('#back-btn').hidden = isTwoPane() || !(inThread || inEditor);
 }
 
 function handleBack() {
@@ -55,22 +59,51 @@ function handleBack() {
   updateBackButton();
 }
 
-// --------------------------------------------------------------- tab bar a11y
-function initTabBar() {
-  const tabs = $$('.tab');
-  for (const tab of tabs) {
-    tab.addEventListener('click', () => showView(tab.dataset.view));
-    tab.addEventListener('keydown', (e) => {
-      const i = tabs.indexOf(tab);
+// --------------------------------------------------------------- nav a11y
+// Wire one nav group (the bottom tab bar OR the sidebar) for click + roving
+// arrow-key navigation. `nextKey`/`prevKey` differ by orientation: the bottom
+// tab bar is horizontal (Left/Right), the sidebar is vertical (Up/Down).
+function wireNavGroup(items, nextKey, prevKey) {
+  for (const item of items) {
+    item.addEventListener('click', () => showView(item.dataset.view));
+    item.addEventListener('keydown', (e) => {
+      const i = items.indexOf(item);
       let next = null;
-      if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
-      else if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
-      else if (e.key === 'Home') next = tabs[0];
-      else if (e.key === 'End') next = tabs[tabs.length - 1];
+      if (e.key === nextKey) next = items[(i + 1) % items.length];
+      else if (e.key === prevKey) next = items[(i - 1 + items.length) % items.length];
+      else if (e.key === 'Home') next = items[0];
+      else if (e.key === 'End') next = items[items.length - 1];
       if (next) { e.preventDefault(); next.focus(); showView(next.dataset.view); }
     });
   }
+}
+
+function initNav() {
+  wireNavGroup($$('.tab'), 'ArrowRight', 'ArrowLeft');
+  wireNavGroup($$('.sidenav'), 'ArrowDown', 'ArrowUp');
+  // Sidebar "me" shortcut -> Profile.
+  $('#side-me')?.addEventListener('click', () => showView('profile'));
   $('#back-btn').addEventListener('click', handleBack);
+
+  // Resize / breakpoint crossing: when entering two-pane while a thread or note
+  // editor is open, the list pane may have been hidden by the mobile single-
+  // column logic. Re-reveal it so both panes show. Going the other way, CSS
+  // handles it (the detail pane covers the column).
+  onTwoPaneChange((mq) => {
+    if (mq.matches) {
+      if (!$('#view-chats').hidden && $('#view-chats').classList.contains('has-thread')) {
+        show($('#chat-list-pane'));
+      }
+      if (!$('#view-notes').hidden && $('#view-notes').classList.contains('has-editor')) {
+        show($('#notes-list-pane'));
+      }
+    } else {
+      // Back to single column: if a detail pane is open, hide its list again.
+      if ($('#view-chats').classList.contains('has-thread')) hide($('#chat-list-pane'));
+      if ($('#view-notes').classList.contains('has-editor')) hide($('#notes-list-pane'));
+    }
+    updateBackButton();
+  });
 }
 
 // --------------------------------------------------------------- boot
@@ -80,9 +113,11 @@ async function boot() {
 
   // identity ready
   $('#self-name').textContent = state.displayName;
+  const sideName = $('#side-self-name');
+  if (sideName) sideName.textContent = state.displayName;
   show($('#app'));
 
-  initTabBar();
+  initNav();
   initChats();
   initCalls();
   initCallLog();

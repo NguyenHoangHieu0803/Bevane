@@ -5,7 +5,7 @@
 
 import { api } from './api.js';
 import { state, emit, on } from './state.js';
-import { $, $$, clear, el, show, hide, announce, toast, comingSoon, fmtDateTime } from './ui.js';
+import { $, $$, clear, el, show, hide, announce, toast, comingSoon, fmtDateTime, isTwoPane } from './ui.js';
 import { showAiResult } from './ai-tools.js';
 
 let editing = null;       // current note object or null (new)
@@ -129,7 +129,10 @@ function openEditor(note) {
   renderChecklist();
 
   show($('#note-editor-pane'));
-  hide($('#notes-list-pane'));
+  // Two-pane (desktop): keep the notes list visible beside the editor.
+  // Single-column (mobile): hide the list so the editor is full-screen.
+  $('#view-notes').classList.add('has-editor');
+  if (!isTwoPane()) hide($('#notes-list-pane'));
   emit('notes:editor-open', {});
   $('#note-title').focus();
 }
@@ -227,6 +230,7 @@ function closeEditor() {
   editing = null;
   hide($('#note-editor-pane'));
   show($('#notes-list-pane'));
+  $('#view-notes').classList.remove('has-editor');
   emit('notes:editor-close', {});
   loadNotes();
 }

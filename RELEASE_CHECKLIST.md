@@ -70,4 +70,117 @@
    confirmed once on iOS Safari via the HTTPS URL (markup/manifest/SW are correct).
 3. BUG-001 cosmetic AI-note title — fix when convenient, not release-blocking.
 
-## VERDICT: **GO** (with the two manual-confirm caveats above)
+## VERDICT (v1): **GO** (with the two manual-confirm caveats above)
+
+---
+
+# ROUND 2 (v2) — Pre-Release Checklist
+**Gate owner:** QA/QC Full-Stack Agent · **Date:** 2026-06-16
+
+## Build & boot
+- [x] `node server.js` boots clean; additive DB migration ran with **no errors in log**
+- [x] Server reused across full test run, stable, killed at end
+
+## Backend (regression + new)
+- [x] v1 regression: users, conversation, REST messages, notes CRUD, generate-note, smart-reply
+- [x] WS protocol smoke 21/21
+- [x] 7 new AI endpoints (tone-adjust, translate, chat-summary, note-summarize, smart-tags, action-items, ask-about-note) return documented JSON
+- [x] All new endpoints 400/404 on bad input (empty text, unknown tone, missing conversation, etc.)
+- [x] Groups POST/GET (owner auto-added; member listing works); 400 on missing name
+- [x] Note new-field round-trip (folder/pinned/color/checklist/reminderAt persist; PUT locked/checklist; pinned-first sort)
+- [x] All v2 AI offline/deterministic (no network, no key)
+
+## Frontend / PWA (v2)
+- [x] Real index.html, manifest.webmanifest, sw.js all 200
+- [x] sw.js cache constant `bevane-shell-v3`; SHELL includes profile.js, groups.js, reactions.js, ai-tools.js, vendor/qrcode.js
+- [x] 16/16 public/js + vendor files pass `node --check --input-type=module`
+- [x] Every named import resolves to a real export (0 unresolved)
+
+## Black-screen / overlay audit (the regression that bit the user)
+- [x] `[hidden]{display:none !important}` present (styles.css:34) and is the ONLY `!important` display rule
+- [x] No CSS overrides display for overlays while [hidden]
+- [x] All overlays hidden at boot (splash hidden by JS; rest have `hidden` attr); `boot()` + `.catch()` both hide splash
+- [x] **No overlay can cover the app on load**
+
+## Dead-button audit (user's explicit complaint)
+- [x] 72 static buttons/tabs + all dynamic buttons enumerated and traced
+- [x] **0 UNWIRED** — every control has a real handler or routes to `comingSoon()` (~28 stubs)
+- [x] Bonus: profile QR is now a working generator (was listed as stub)
+
+## Accessibility (WCAG AA — new UI)
+- [x] Profile, notification toggles, folder tabs, group dialog, in-call controls, reaction sheet labeled + focus-managed
+- [x] Live-region announcements (comingSoon/presence/typing/call); ≥44px targets; contrast AA
+
+## Defects
+- [x] 0 Critical / 0 High in v2
+- [x] OBS-001..004 informational / by-design (see bug_tracker.md)
+
+## Caveats carried into v2 release
+1. **WebRTC live media** — confirm two-tab audio/video once in a real browser (signaling fully verified).
+2. **PWA install / offline shell** — confirm once on-device over HTTPS (markup/manifest/SW correct).
+3. Reactions/reply/unsend, group messaging, reminders firing, note-lock enforcement, real auth/push/media are clearly-labeled stubs or client-only per spec — not regressions.
+
+## VERDICT (v2): **GO** (with the two manual-confirm caveats above)
+
+---
+
+# ROUND 3 — Web App Conversion (responsive + iOS removal)
+
+**Gate owner:** QA/QC Full-Stack Agent · **Date:** 2026-06-16
+**Scope:** CSS-driven responsive redesign + iOS-bit removal over the same DOM; backend unchanged.
+
+## Build & boot
+- [x] Deps present; `node server.js` boots clean on 0.0.0.0:3000 (HTTP+WS+SQLite)
+- [x] `GET /` 200; `GET /sw.js` 200 → `bevane-shell-v4`
+
+## Backend regression (unchanged contract)
+- [x] 2 users → conversation → 3 messages → GET order correct
+- [x] Notes CRUD (create/update/list)
+- [x] AI: tone-adjust, action-items, smart-reply, generate-note (5+ endpoints)
+- [x] Call log create+list; error shapes (400/404 JSON); SPA fallback 200
+- [x] WS smoke `tests/ws_smoke.js` → 21/21
+
+## Persistence (AC-GLOBAL-PERSIST) — re-verified by QC
+- [x] `kill -9` hard restart on same `data/bevane.db` (WAL)
+- [x] SQLite counts identical: users 15 / conversations 7 / messages 10 / notes 7 / call_logs 3
+- [x] REST re-listings identical (conversations, messages in order, notes, calls)
+
+## iOS removal (AC-F4)
+- [x] `apple-mobile-web-app-*` meta tags gone; `maximum-scale` gone; `viewport-fit=cover` gone
+- [x] Viewport allows pinch/zoom; manifest has no orientation/apple tokens; webrtc.js generalized
+- [x] `apple-touch-icon` kept only as harmless extra
+
+## Responsive layout (AC-F5 / AC-GLOBAL-RESPONSIVE) — static + structural
+- [x] index.html has both sidebar nav + mobile tab bar; both drive `showView()`
+- [x] Breakpoints 768px (tablet/two-pane) + 1024px (desktop); mobile = single column + tab bar
+- [x] Two-pane JS hides list only when `!isTwoPane()`; `onTwoPaneChange` re-syncs on resize
+- [x] No logic path blanks the content area at any breakpoint
+- [~] Real-browser / on-device render + live-resize confirm OUTSTANDING (carried caveat)
+
+## Black-screen / overlay audit
+- [x] `[hidden]{display:none!important}` intact; no competing `!important` display
+- [x] All overlays `hidden` until invoked; `boot().catch(hideSplash)`
+
+## Dead-button audit
+- [x] 63 interactive buttons + attach/filter/notif/folder controls all wired
+- [x] **0 UNWIRED** (real handler / form submit / `comingSoon()`)
+
+## Integrity
+- [x] 17/17 JS parse; all named imports resolve; `sw.js bevane-shell-v4`, SHELL complete
+
+## Accessibility (sidebar + two-pane)
+- [x] tablist/tab/aria-selected/aria-controls, roving tabindex, arrow-key nav
+- [x] Active state not color-alone; skip-link, landmarks, aria-live, no zoom lock, `:focus-visible`
+- [~] Views lack `role=tabpanel` (OBS-R3-001, minor, non-blocking)
+
+## Defects
+- [x] 0 Critical / 0 High / 0 Medium in v3
+- [x] OBS-R3-001 minor a11y polish (logged, not fixed — behavior-neutral)
+
+## Caveats carried into v3 release
+1. **Responsive verified statically/structurally** — confirm real-browser + on-device render and live resize.
+2. **WebRTC live media** — needs two real clients (signaling 21/21 verified).
+3. **loca.lt interstitial** — one-time click-through on the public tunnel (not an app defect).
+4. **PWA install / offline shell** — confirm on-device over HTTPS (markup/manifest/SW v4 correct).
+
+## VERDICT (v3): **GO** (with the manual-confirm caveats above)

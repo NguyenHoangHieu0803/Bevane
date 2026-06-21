@@ -6,6 +6,22 @@ export const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel
 export function show(el) { if (el) el.hidden = false; }
 export function hide(el) { if (el) el.hidden = true; }
 
+// Responsive breakpoint helper. Mirrors the CSS two-pane breakpoint (768px):
+// at/above it, Chats and Notes render both panes side-by-side, so feature
+// modules must NOT hide the list pane when a thread/editor opens. Below it the
+// app is single-column and the list pane is hidden to reveal the detail pane.
+// `matchMedia` stays live across resize / devtools device mode.
+const twoPaneMQ = (typeof window !== 'undefined' && window.matchMedia)
+  ? window.matchMedia('(min-width: 768px)')
+  : null;
+export function isTwoPane() { return !!(twoPaneMQ && twoPaneMQ.matches); }
+export function onTwoPaneChange(fn) {
+  if (!twoPaneMQ) return;
+  // addEventListener('change') is the modern API; addListener is the fallback.
+  if (twoPaneMQ.addEventListener) twoPaneMQ.addEventListener('change', fn);
+  else if (twoPaneMQ.addListener) twoPaneMQ.addListener(fn);
+}
+
 export function clear(el) { while (el && el.firstChild) el.removeChild(el.firstChild); }
 
 // Create an element with attributes + children. Text via {text}.

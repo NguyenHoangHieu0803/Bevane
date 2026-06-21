@@ -32,6 +32,65 @@ Express + `ws` + `better-sqlite3` + `uuid`. CommonJS modules.
 See `backend/api_specs.md` for the full REST + WebSocket contract (the source
 of truth the frontend codes against).
 
+## Deployment: tunnel / wss readiness (Round 3)
+
+The app is served over HTTPS at **https://bevane.loca.lt** via localtunnel
+(`localtunnel --port <PORT> --subdomain bevane`) pointing at the running Node
+server. Verified Round-3 facts:
+
+- **Origin-agnostic.** The server binds `0.0.0.0`, respects `process.env.PORT`,
+  and hardcodes **no** host/origin anywhere. The client uses relative `/api/...`
+  and derives the socket URL from `location` (`wss://<host>/ws`).
+- **Same-origin → no CORS.** `/`, `/api/*`, and `/ws` are all served by this one
+  process from the same origin, so **no CORS is configured** (none needed). Do
+  not add CORS unless a genuine cross-origin need appears.
+- **WS through the proxy.** The `ws` server attaches to the **same HTTP server**
+  at `path: '/ws'` and performs **no Origin allow-listing / no `verifyClient`**,
+  so the `Upgrade` handshake passes through the tunnel. Verified by connecting
+  with `Origin: https://bevane.loca.lt` + `X-Forwarded-Proto: https` — the
+  upgrade succeeds.
+- **No forced proto.** Nothing reads `req.secure`/`req.protocol`/`req.ip` or
+  forces `http`/`ws`. TLS terminates at the tunnel; the Node server stays HTTP/WS
+  behind it. `app.set('trust proxy', …)` is therefore **not needed** and is not
+  set.
+- **No iOS-specific server logic.** No `apple-*` headers, no user-agent / Safari
+  branching, no iOS-only WebRTC handling (signaling is a dumb relay). Confirmed
+  by grep — none found.
+
+## Persistence guarantee (Round 3, verified)
+
+**All conversations and user data are persisted in SQLite and survive a server
+restart, a browser reload, and a WS reconnect.**
+
+- **Where:** `data/bevane.db` (override with `BEVANE_DB`), `better-sqlite3` in
+  **WAL** mode (`bevane.db-wal` + `bevane.db-shm` alongside it).
+- **What persists (tables):** `users`, `conversations`, `messages`, `notes`,
+  `call_logs`, `groups`, `group_members`. Re-listed via:
+  `GET /api/conversations?userId=`, `GET /api/conversations/:id/messages`,
+  `GET /api/notes?ownerId=`, `GET /api/calls?userId=`.
+- **Durable without a clean shutdown.** WAL journaling is durable: data survives
+  even a hard `SIGKILL` (no explicit checkpoint required). Verified by killing
+  the process with `kill -9` and re-listing from a fresh process on the same DB
+  file — identical rows returned.
+- **Only `online` presence is in-memory** (the WS-connected set), and it is
+  *correctly* derived live on each request — it is not lost data. Nothing the UI
+  depends on after reload is held only in memory.
+
+Verification evidence (3 messages / 1 conversation / 1 note / 1 completed call,
+before vs. after a `kill -9` restart on the same DB file):
+
+```
+                BEFORE          AFTER (new process)
+conversations   1               1
+messages        3  (same order) 3  (same order/content)
+notes           1               1
+call_logs       1  (dur 45s)    1  (dur 45s)
+```
+
+The WS smoke test (`node tests/ws_smoke.js`) passes all 21 assertions
+(auth → auth:ok, chat round-trip + delivered/read receipts, typing, full WebRTC
+relay) — the same path used over `wss` through the tunnel.
+
 ## Call-log approach
 
 Call logs are written via **REST `POST /api/calls`** at end-of-call (with an

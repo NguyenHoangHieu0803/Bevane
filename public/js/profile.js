@@ -59,6 +59,8 @@ function saveName(e) {
   setIdentity(state.userId, name); // keep id, change name (local-only this round)
   renderProfile();
   $('#self-name').textContent = name;
+  const sideName = $('#side-self-name');
+  if (sideName) sideName.textContent = name;
   closeEditName();
   toast('Display name updated.');
   announce('Display name updated.');

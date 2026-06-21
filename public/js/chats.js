@@ -6,7 +6,7 @@ import { state, emit, on } from './state.js';
 import { send as wsSend } from './ws.js';
 import {
   $, clear, el, show, hide, announce, toast, comingSoon,
-  fmtTime, uuid,
+  fmtTime, uuid, isTwoPane,
 } from './ui.js';
 import { openMessageActions, renderServerReactions } from './reactions.js';
 import { buildTonePicker, translateText, summarizeChat, showAiResult } from './ai-tools.js';
@@ -48,8 +48,9 @@ function renderConversationItem(c) {
 
   return el('li', {}, [
     el('button', {
-      class: 'conversation-item',
+      class: `conversation-item${c.id === state.activeConversationId ? ' conversation-item--active' : ''}`,
       type: 'button',
+      'data-cid': c.id,
       'aria-label': `Open conversation with ${c.peer.displayName}, ${online ? 'online' : 'offline'}`,
       onclick: () => openThread(c.id, c.peer),
     }, [
@@ -73,7 +74,11 @@ export async function openThread(conversationId, peer) {
   updatePresenceLabel(peer.online);
 
   show($('#thread-pane'));
-  hide($('#chat-list-pane'));
+  // Two-pane (desktop/tablet): keep the conversation list visible alongside the
+  // thread. Single-column (mobile): hide the list so the thread is full-screen.
+  $('#view-chats').classList.add('has-thread');
+  markActiveConversation(conversationId);
+  if (!isTwoPane()) hide($('#chat-list-pane'));
   hide($('#smart-reply-bar'));
   clearReply();
   $('#message-search').hidden = true;
@@ -98,7 +103,16 @@ export function closeThread() {
   state.activePeer = null;
   hide($('#thread-pane'));
   show($('#chat-list-pane'));
+  $('#view-chats').classList.remove('has-thread');
+  markActiveConversation(null);
   loadConversations();
+}
+
+// Highlight the open conversation in the list (visible in two-pane mode).
+function markActiveConversation(conversationId) {
+  for (const btn of $('#conversation-list').querySelectorAll('.conversation-item')) {
+    btn.classList.toggle('conversation-item--active', btn.dataset.cid === conversationId);
+  }
 }
 
 function updatePresenceLabel(online) {

@@ -1,6 +1,7 @@
 // Voice + video calling over WebRTC, signaled through the backend WS relay.
-// iOS Safari: playsinline on <video>, getUserMedia behind a user gesture,
-// Google STUN server configured.
+// Cross-browser practice: `playsinline` on <video> keeps video inline (all
+// browsers), getUserMedia is invoked behind a user gesture (good universal
+// practice), and a public Google STUN server is configured.
 
 import { api } from './api.js';
 import { state, emit, on } from './state.js';

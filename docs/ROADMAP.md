@@ -1,8 +1,20 @@
 # Bevane — Roadmap
 
-**Author:** Business Analyst Agent · **Date:** 2026-06-16 · **Version:** 2.0
+**Author:** Business Analyst Agent · **Date:** 2026-06-16 · **Version:** 3.0
 
 Phased plan tying every feature to a delivery phase. Tags: **[WORKING]** done · **[STUB]** represented this round · **[ROADMAP]** future.
+
+---
+
+## v3 — Web App conversion (this round, UI/layout + cleanup, NO new features)
+
+**Goal:** reframe Bevane from "mobile/iOS-PWA" to a **general responsive Web Application** (desktop + mobile browsers). Not a rewrite. The feature catalog is frozen; tags unchanged. See `web_app_conversion.md`, `business_requirements.md` §2, and `communication-history/09_BA_to_Backend_v3.md`.
+
+- **Responsive redesign (Frontend):** desktop-first layout — **left sidebar nav + content**; **Chats = two-pane (list | thread)** on wide screens; collapses to **single-column + bottom tab bar** on mobile (`<768px`). Breakpoints: desktop ≥1024, tablet 768–1023, mobile <768. No iPhone-shaped column.
+- **Strip iOS specifics (Frontend):** remove `apple-mobile-web-app-*` meta tags, the `maximum-scale=1.0` zoom lock, and iPhone-only safe-area/notch framing; stop depending on `apple-touch-icon`; generalize "Add to Home Screen on iOS" copy and iOS-only WebRTC wording. Stays installable, just not iOS-targeted.
+- **Delivery:** served over HTTPS at **https://bevane.loca.lt** (localtunnel → Node server); WebSocket over **`wss`** must work through the tunnel proxy. Same-origin (no CORS needed).
+- **Persistence (Backend verify + document):** messages, conversations, notes, call logs all in **SQLite**, surviving **server restart + browser reload + WS reconnect**. Explicit acceptance test in `web_app_conversion.md` (d).
+- **Accessibility (Frontend):** desktop keyboard navigation of sidebar + two-pane chat; remove zoom lock; preserve all v2 WCAG 2.1 AA guarantees.
 
 ---
 

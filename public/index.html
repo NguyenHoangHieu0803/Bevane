@@ -2,21 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0" />
+  <!-- Responsive, cross-browser viewport. No zoom lock (pinch/zoom allowed for a11y). -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bevane — Private chat, calls & notes</title>
   <meta name="description" content="Private peer-to-peer messaging, voice and video calls, and AI-assisted notes." />
 
-  <!-- Theme / PWA -->
+  <!-- Theme / installable PWA (standard, cross-browser; canonical icons live in the manifest) -->
   <meta name="theme-color" content="#0b3d91" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="/manifest.webmanifest" />
 
-  <!-- iOS Safari add-to-home-screen -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Bevane" />
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <!-- Canonical icon. apple-touch-icon kept only as a harmless extra; the app does not depend on it. -->
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
@@ -55,6 +53,47 @@
 
   <!-- ===================== App ===================== -->
   <div id="app" class="app" hidden>
+
+    <!-- ---------- Desktop sidebar (same logical nav as the mobile tab bar) ---------- -->
+    <nav class="sidebar" aria-label="Primary">
+      <a class="sidebar__brand" href="#main">
+        <img class="sidebar__logo" src="/icons/icon.svg" alt="" width="32" height="32" />
+        <span class="sidebar__brandname">Bevane</span>
+      </a>
+      <ul role="tablist" class="sidebar__list" aria-orientation="vertical">
+        <li role="presentation">
+          <button class="sidenav" id="side-chats" role="tab" aria-selected="true" aria-controls="view-chats" data-view="chats">
+            <span class="sidenav__icon" aria-hidden="true">💬</span>
+            <span class="sidenav__label">Chats</span>
+          </button>
+        </li>
+        <li role="presentation">
+          <button class="sidenav" id="side-calls" role="tab" aria-selected="false" aria-controls="view-calls" data-view="calls">
+            <span class="sidenav__icon" aria-hidden="true">📞</span>
+            <span class="sidenav__label">Calls</span>
+          </button>
+        </li>
+        <li role="presentation">
+          <button class="sidenav" id="side-notes" role="tab" aria-selected="false" aria-controls="view-notes" data-view="notes">
+            <span class="sidenav__icon" aria-hidden="true">📝</span>
+            <span class="sidenav__label">Notes</span>
+          </button>
+        </li>
+        <li role="presentation">
+          <button class="sidenav" id="side-profile" role="tab" aria-selected="false" aria-controls="view-profile" data-view="profile">
+            <span class="sidenav__icon" aria-hidden="true">👤</span>
+            <span class="sidenav__label">Profile</span>
+          </button>
+        </li>
+      </ul>
+      <button class="sidebar__me" id="side-me" type="button" data-view="profile" aria-label="Open your profile">
+        <span class="sidebar__me-avatar" aria-hidden="true">●</span>
+        <span id="side-self-name" class="sidebar__me-name"></span>
+      </button>
+    </nav>
+
+    <!-- ---------- Content column (header + main + mobile tab bar) ---------- -->
+    <div class="app__content">
     <header class="app-header" role="banner">
       <button id="back-btn" class="iconbtn app-header__back" type="button" aria-label="Back to list" hidden>
         <span aria-hidden="true">‹</span>
@@ -149,6 +188,11 @@
               <span aria-hidden="true">➤</span>
             </button>
           </form>
+        </div>
+
+        <!-- Desktop two-pane empty state (shown when no thread is open) -->
+        <div id="thread-empty" class="thread-empty" aria-hidden="true">
+          <p class="thread-empty__text">Select a conversation to start chatting.</p>
         </div>
       </section>
 
@@ -283,7 +327,7 @@
     </main>
 
     <!-- ---------- Bottom tab bar (Chats / Calls / Notes / Profile) ---------- -->
-    <nav class="tabbar" aria-label="Primary">
+    <nav class="tabbar" aria-label="Primary (mobile)">
       <ul role="tablist" class="tabbar__list">
         <li role="presentation">
           <button class="tab" id="tab-chats" role="tab" aria-selected="true" aria-controls="view-chats" data-view="chats">
@@ -311,6 +355,7 @@
         </li>
       </ul>
     </nav>
+    </div><!-- /.app__content -->
   </div>
 
   <!-- ===================== Peer picker dialog ===================== -->

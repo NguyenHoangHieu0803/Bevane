@@ -158,15 +158,29 @@ button { font: inherit; cursor: pointer; }
   min-height: 1.2em;
 }
 
-/* -------------------- App shell -------------------- */
+/* -------------------- App shell --------------------
+   Mobile-first: single column (header + main + bottom tab bar), full height.
+   The desktop sidebar exists in the DOM but is hidden below the desktop
+   breakpoint; the bottom tab bar is hidden at/above it. Both drive the same
+   showView() logic (see app.js). Responsive rules live at the bottom of this
+   file under "Responsive layout". */
 .app {
   display: flex;
-  flex-direction: column;
   height: 100dvh;
-  max-width: 540px;
-  margin: 0 auto;
   background: var(--bg);
 }
+
+/* The content column holds the header, the views, and the mobile tab bar. */
+.app__content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+}
+
+/* Desktop-only sidebar (hidden on mobile/tablet; see media queries). */
+.sidebar { display: none; }
 
 .app-header {
   height: calc(var(--header-h) + env(safe-area-inset-top));
@@ -238,6 +252,12 @@ button { font: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+/* Open conversation highlight (visible in desktop/tablet two-pane). */
+.conversation-item--active {
+  border-color: var(--primary);
+  box-shadow: inset 3px 0 0 var(--primary);
+  background: var(--surface-2);
 }
 .conversation-item__top, .call-item__top, .peer-item__top {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -797,6 +817,163 @@ button { font: inherit; cursor: pointer; }
   font-size: .8rem;
 }
 .call-overlay--audio .call-quality { display: none; }
+
+/* Desktop two-pane empty state — only rendered on desktop (see media queries). */
+.thread-empty { display: none; }
+
+/* ============================================================
+   Responsive layout (Round 3 — web app conversion)
+   Breakpoints:
+     --bp-tablet:  768px
+     --bp-desktop: 1024px
+   Mobile  (< 768px) : single column + bottom tab bar (default rules above).
+   Tablet  (768–1023): sidebar icon-rail + content; chats two-pane if room.
+   Desktop (>= 1024) : persistent sidebar + content; chats/notes two-pane.
+   Same DOM throughout; CSS shows the sidebar OR the bottom tab bar per width.
+   ============================================================ */
+
+/* -------------------- Sidebar (desktop / tablet) -------------------- */
+.sidebar {
+  flex: 0 0 auto;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 12px 8px;
+  gap: 8px;
+}
+.sidebar__brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px 14px;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 800;
+}
+.sidebar__brandname { font-size: 1.2rem; letter-spacing: .3px; }
+.sidebar__list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 4px;
+  flex: 1 1 auto;
+}
+.sidenav {
+  width: 100%;
+  min-height: var(--tap);
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: left;
+}
+.sidenav__icon { font-size: 1.3rem; line-height: 1; flex: 0 0 auto; }
+.sidenav__label { font-size: .95rem; }
+.sidenav:hover { background: var(--surface-2); color: var(--text); }
+/* Active destination: not by color alone — bg + left bar + bold weight. */
+.sidenav[aria-selected="true"] {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+  box-shadow: inset 3px 0 0 var(--primary);
+  font-weight: 800;
+}
+.sidebar__me {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 10px;
+  margin-top: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+}
+.sidebar__me-avatar { color: var(--accent); font-size: .9rem; }
+.sidebar__me-name {
+  font-weight: 700; font-size: .9rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Cap readable content widths on very wide screens so lines stay comfortable. */
+@media (min-width: 768px) {
+  /* Calls / Notes-list / Profile content gets a sensible reading width.
+     Chats stays full-width because it is two-pane. */
+  #view-calls .pane,
+  #view-profile .pane { max-width: 760px; }
+}
+
+/* -------------------- Tablet: 768px – 1023px -------------------- */
+@media (min-width: 768px) {
+  .sidebar { display: flex; width: 76px; }
+  /* Icon-rail: hide text labels + brand wordmark, center icons. */
+  .sidebar__brandname,
+  .sidebar__me-name { display: none; }
+  .sidenav { justify-content: center; padding: 12px 0; }
+  .sidenav__label { display: none; }
+  .sidebar__brand { justify-content: center; padding: 6px 0 14px; }
+  .sidebar__me { justify-content: center; }
+
+  /* Bottom tab bar is replaced by the sidebar at this width. */
+  .tabbar { display: none; }
+  /* The back button is desktop/tablet-irrelevant for chats two-pane, but it
+     still appears for the notes editor; leave its toggle to JS. */
+}
+
+/* -------------------- Tablet+/Desktop chats two-pane -------------------- */
+@media (min-width: 768px) {
+  /* Chats view becomes a horizontal two-pane: list | thread. */
+  #view-chats { flex-direction: row; }
+  #chat-list-pane {
+    flex: 0 0 320px;
+    max-width: 360px;
+    border-right: 1px solid var(--border);
+  }
+  /* Thread + empty state share the remaining space. */
+  #thread-pane { flex: 1 1 auto; min-width: 0; }
+  .thread-empty {
+    flex: 1 1 auto;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    color: var(--text-muted);
+  }
+  /* When a thread IS open, hide the empty state; the list stays visible. */
+  #view-chats.has-thread .thread-empty { display: none; }
+}
+
+/* -------------------- Desktop: >= 1024px -------------------- */
+@media (min-width: 1024px) {
+  .sidebar { width: 232px; padding: 16px 12px; }
+  .sidebar__brandname,
+  .sidebar__me-name { display: inline; }
+  .sidenav { justify-content: flex-start; padding: 10px 12px; }
+  .sidenav__label { display: inline; }
+  .sidebar__brand { justify-content: flex-start; padding: 6px 8px 16px; }
+  .sidebar__me { justify-content: flex-start; }
+
+  #chat-list-pane { flex: 0 0 340px; max-width: 380px; }
+
+  /* Notes two-pane: list | editor side-by-side. */
+  #view-notes { flex-direction: row; }
+  #notes-list-pane {
+    flex: 0 0 340px;
+    max-width: 380px;
+    border-right: 1px solid var(--border);
+  }
+  #note-editor-pane { flex: 1 1 auto; min-width: 0; }
+  /* On desktop the notes editor is shown inline beside the list; the per-view
+     JS still toggles [hidden] for the editor on mobile. A class on the view
+     keeps both panes visible (set by notes.js / app.js). */
+  #view-notes.has-editor #notes-list-pane { display: flex; }
+
+  /* Call overlay sized for desktop (centered modal card, not a phone strip). */
+  .call-overlay {
+    inset: 0;
+    padding: 0;
+  }
+  .call-overlay__controls { padding: 20px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }

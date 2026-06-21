@@ -2,9 +2,9 @@
 
 **Author:** Business Analyst Agent
 **Date:** 2026-06-16
-**Version:** 2.0 (Full-spec expansion — "full spec, stubs allowed")
-**Status:** Baseline for Backend handoff v2
-**Supersedes:** v1.0 (Demo scope)
+**Version:** 3.0 (Web App conversion — responsive desktop + mobile)
+**Status:** Baseline for Backend handoff v3
+**Supersedes:** v2.0 (Full-spec, mobile/iOS-PWA framing)
 
 ---
 
@@ -12,41 +12,72 @@
 
 This is a **full product spec**. To keep the build honest, **every feature is tagged**:
 
-- **[WORKING]** — implemented end-to-end and functional today (delivered in Round 1, or trivially extended this round).
-- **[STUB]** — must be **represented in the UI this round** as a clearly-labeled control that gives **"Coming soon" feedback**. Never a silent dead button. No real backend behavior required yet.
+- **[WORKING]** — implemented end-to-end and functional today.
+- **[STUB]** — must be **represented in the UI** as a clearly-labeled control that gives **"Coming soon"** feedback. Never a silent dead button. No real backend behavior required yet.
 - **[ROADMAP]** — planned for a future phase; not required in the UI this round (may appear in settings/roadmap text only). See `ROADMAP.md`.
 
-**Scope strategy (binding):** EVERY feature listed in this document must be **represented** in the UI. Features that already work stay functional; everything else ships as a clearly-labeled stub. This gives a complete, navigable product surface that demos the full vision while being buildable from a Linux environment.
+**Scope strategy (binding):** EVERY feature listed in this document must be **represented** in the UI. Features that already work stay functional; everything else ships as a clearly-labeled stub.
+
+**What changed in v3 (read this first):** Bevane is **already a web application** — Node/Express + `ws` (WebSocket) + SQLite backend, vanilla-JS browser frontend in `/public`. There is **no native iOS/Swift code** and never was. v3 is **not a rewrite**. v3 reframes the product from "mobile/iOS-PWA" to a **general, responsive Web Application** that works well on **desktop and mobile browsers**. The work this round is **UI/layout + cleanup**, not new features:
+
+1. A **full responsive redesign** (desktop-first, sidebar + two-pane chat, collapsing to single-column on mobile).
+2. **Stripping iOS-specific bits** (Apple-only PWA meta tags, iPhone-only framing).
+3. A normal **HTTPS web origin** delivery at **https://bevane.loca.lt** (a localtunnel pointing at the running server; WebSocket over `wss`).
+4. An explicit, testable **conversation/data persistence** requirement (everything in SQLite, surviving restart/reload/reconnect).
+
+See the dedicated **§2 (Web App conversion)** below and the focused spec in `web_app_conversion.md`.
 
 ---
 
 ## 1. Vision
 
-Bevane is a private, mobile-first communication app: **chat, voice call, video call, and AI-assisted notes** between people, with a lightweight onboarding flow and a personal profile/QR identity. A user scans a QR code, the app opens in iOS Safari, and (via Add to Home Screen) runs full-screen like a native app — **no App Store install**.
+Bevane is a private communication app: **chat, voice call, video call, and AI-assisted notes** between people, with a lightweight onboarding flow and a personal profile/QR identity. It runs in **any modern browser on desktop or mobile** — no App Store, no native install, no API keys.
 
 ### Vision statement
-> "Scan a code, set up a profile, and instantly chat, call, video, and take smart notes — privately, accessibly, and installable to your home screen, with no App Store and no API keys."
+> "Open a link, set up a profile, and instantly chat, call, video, and take smart notes — privately and accessibly — in any browser, on any screen size, with no App Store and no API keys."
 
 ---
 
-## 2. Delivery decision — PWA, enhanced to feel native (NOT native iOS)
+## 2. Web App conversion (v3 — binding)
 
-**Decision (already approved by the Agent Teams Lead):** Bevane is delivered as an **installable, mobile-first Progressive Web App (PWA)**, enhanced to feel native — NOT a native Swift/iOS app.
+This section is the heart of v3. The focused implementation spec lives in `web_app_conversion.md`; this is the requirements summary.
 
-**The intended "native-feeling" install flow:**
-1. User scans the Bevane **QR code**.
-2. The QR opens the public **HTTPS URL in Safari**.
-3. User taps **Share → Add to Home Screen**.
-4. The app launches **full-screen / standalone** with a **splash screen** and app icon, indistinguishable from a native app to most users.
+### 2.1 Delivery decision — responsive Web Application
+**Decision (approved by the Agent Teams Lead):** Bevane is delivered as a **standard responsive web application**, served over HTTPS, that works on **desktop and mobile browsers**. It may remain installable (Web App Manifest + service worker) but is **no longer iOS-targeted** and is **not** framed as an iPhone-shaped column.
 
-**Why not a native Swift/iOS app (documented rationale):**
-- This product is built and distributed from a **Linux environment**. Xcode, the iOS SDK, code signing, and the App Store pipeline are **not available** on Linux — a native build cannot be produced here.
-- **iOS forbids QR-code auto-install** of apps. A QR code cannot silently install a native app; only the App Store (or enterprise MDM) can. A web URL, by contrast, opens instantly from a QR.
-- App Store **review and developer-account** requirements add days-to-weeks of latency and cost, incompatible with an instant-link demo.
+- Origin: a normal HTTPS web origin. The reference deployment is **https://bevane.loca.lt** (a localtunnel with the `bevane` subdomain pointing at the running Node server).
+- Same-origin delivery: the Node server serves the entire app (HTML/CSS/JS) and the `/api/*` + `/ws` endpoints from one origin.
+- Real-time: a single WebSocket channel must work over **`wss`** through the tunnel/proxy.
 
-**What the PWA approach gives us:** instant access via link/QR, home-screen install, standalone full-screen UI, offline-capable shell (service worker), and same-origin delivery of the entire app from one Node server. **WebRTC** provides native-quality voice/video in the browser.
+### 2.2 Responsive layout requirements (binding)
+- **Desktop (≥ 1024px):** a **persistent left sidebar navigation** (Chats / Calls / Notes / Profile) beside a content area. Proper desktop chrome — **not** an iPhone-shaped centered column.
+  - **Chats view = two-pane:** the **conversation list** and the **open thread** are shown **side-by-side** (list pane | thread pane). Selecting a conversation opens it in the thread pane without leaving the list.
+- **Tablet (768px–1023px):** sidebar may collapse to icons or a rail; chat may be one or two panes depending on width.
+- **Mobile (< 768px):** **single-column** layout. Navigation collapses to a **bottom tab bar** (or hamburger). Chats become list → thread (full-screen thread with Back), as today.
+- The layout must **reflow gracefully** across these breakpoints with no horizontal scrolling and no clipped controls.
+- Breakpoints are guidance; the exact values live in `web_app_conversion.md` and `Frontend/ARCHITECTURE.md`.
 
-**What the PWA approach cannot do on iOS Safari (documented limits — see §8 Non-Goals):** background push when fully closed (limited), true OS-level call UI (CallKit), screen recording of other apps, virtual-camera injection, on-device ML acceleration parity, and Face ID API access for app-level locking. These constraints are why several advanced AI/media features are **[STUB]/[ROADMAP]**.
+### 2.3 iOS-specifics to REMOVE or generalize (binding)
+The following Apple/iPhone-only assumptions must be **removed or generalized** so the app reads as a normal cross-browser website. (Full checklist in `web_app_conversion.md`.)
+- Apple-only PWA meta tags: `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-mobile-web-app-title`.
+- Reliance on **`apple-touch-icon`** as the only/primary install icon (keep standard manifest `icons`; an apple-touch-icon may remain as a harmless extra, but must not be load-bearing).
+- iPhone-only **safe-area / notch** framing (`viewport-fit=cover` + `env(safe-area-inset-*)` used to shape the whole app like a phone). Safe-area padding may remain as a defensive nicety, but it must not drive the desktop layout.
+- `maximum-scale=1.0` viewport lock (it blocks pinch-zoom and harms accessibility on the web — remove it).
+- **iOS-only WebRTC assumptions** in copy/comments: `playsinline` stays (it's harmless and correct cross-browser), but documentation/UX must not assume iOS Safari is the only target.
+- Any **"Add to Home Screen on iOS"** onboarding copy → generalize to "install / add to your device" or drop.
+
+### 2.4 Conversation & data persistence (binding, explicit, testable)
+**All conversations and user data must be persisted in SQLite and survive server restart, browser reload, and WebSocket reconnect.** Specifically:
+- **Messages** — every chat message is written to SQLite and re-listed on reload (`GET /api/conversations/:id/messages`).
+- **Conversations** — the conversation list persists and re-lists on reload (`GET /api/conversations?userId=`).
+- **Notes** — persisted and re-listed (`GET /api/notes?ownerId=`).
+- **Call logs** — persisted and re-listed (`GET /api/calls?userId=`).
+- **Users/identity** — persisted server-side; the client's `id` is in `localStorage`.
+
+**Acceptance (testable):** After sending messages, creating a note, and completing a call, then **restarting the Node server** and **reloading the browser**, all of the above reappear with the same content and ordering. Querying the SQLite file directly shows the rows. This is verified and documented by Backend in `09_BA_to_Backend_v3.md` / `10_Backend_to_Frontend_v3.md`.
+
+### 2.5 What stays the same
+The **entire feature catalog (§5) and the [WORKING]/[STUB]/[ROADMAP] tags are unchanged.** v3 adds no new features. The backend API contract (`backend/api_specs.md`) is unchanged. WebRTC, AI endpoints, and the WS protocol are unchanged.
 
 ---
 
@@ -56,34 +87,36 @@ Bevane is a private, mobile-first communication app: **chat, voice call, video c
 |-------|-----------|
 | Backend | Node.js + Express + `ws` (WebSocket) + `better-sqlite3` (local SQLite) |
 | Transport | REST APIs (HTTP) + a single WebSocket channel for real-time chat **and** WebRTC signaling |
-| Frontend | Vanilla-JS PWA (no heavy framework), mobile-first, served same-origin by the Node server |
-| Install | Web App Manifest + service worker + splash/icon assets ("Add to Home Screen") |
+| Frontend | Vanilla-JS, **responsive** (desktop + mobile), no heavy framework, served same-origin by the Node server |
+| Layout | Desktop-first: sidebar nav + content; **two-pane chat** on wide screens; single-column + bottom tabs on mobile |
+| Install (optional) | Web App Manifest + service worker (installable, **not** iOS-targeted) |
 | Real-time media | WebRTC (browser-native) for voice and video |
 | AI | Local, **deterministic, offline** helper (`src/ai.js`) — no external API key, no network |
-| Distribution | Public HTTPS URL surfaced as a QR code |
+| Delivery | HTTPS web origin (reference: **https://bevane.loca.lt** via localtunnel; `wss` for WebSocket) |
 
 ---
 
 ## 4. Navigation & app structure
 
-Onboarding then a **4-tab bottom navigation**. Full flow in `screen_flow.md`.
+Onboarding, then a primary navigation with four destinations. The **same four destinations** render as a **sidebar on desktop** and a **bottom tab bar on mobile**. Full flow in `screen_flow.md`.
 
 ```
 Splash → Welcome → Sign Up / Log In → OTP verify → Set Profile → Home
-Home bottom tabs:  [ Chats ]  [ Calls ]  [ Notes ]  [ Profile ]
+Home destinations:  [ Chats ]  [ Calls ]  [ Notes ]  [ Profile ]
+  desktop → left sidebar nav        mobile → bottom tab bar
 ```
 
-- **Auth/Onboarding:** Splash, Welcome, Sign Up, Log In, OTP, Set Profile. (Identity remains lightweight; auth screens present, OTP/password are **[STUB]** this round — see `auth_and_profile.md`.)
-- **Chats tab:** chat list → 1:1 chat → group chat.
-- **Calls tab:** call history → outgoing/active/incoming call → video active/PiP.
-- **Notes tab:** notes list → editor → checklist/reminder/lock sub-screens.
-- **Profile tab:** avatar, display name, personal QR, scan QR, change password, notification settings, logout.
+- **Auth/Onboarding:** Splash, Welcome, Sign Up, Log In, OTP, Set Profile. (Identity remains lightweight; OTP/password are **[STUB]** — see `auth_and_profile.md`.)
+- **Chats:** conversation list → 1:1 chat → group chat. **On desktop, list and open thread are side-by-side (two-pane).**
+- **Calls:** call history → outgoing/active/incoming call → video active/PiP.
+- **Notes:** notes list → editor → checklist/reminder/lock sub-screens.
+- **Profile:** avatar, display name, personal QR, scan QR, change password, notification settings, logout.
 
 ---
 
 ## 5. Feature catalog (all four areas + auth/profile)
 
-Per-feature one-line specs live in `feature_specs/*.md`. This section is the master catalog with tags.
+Per-feature one-line specs live in `feature_specs/*.md`. This section is the master catalog with tags. **Unchanged from v2 — v3 is layout/cleanup, not new features.**
 
 ### 5.1 Messaging — see `feature_specs/messaging.md`
 
@@ -93,20 +126,20 @@ Per-feature one-line specs live in `feature_specs/*.md`. This section is the mas
 - Typing indicator — **[WORKING]**
 - Presence (online/offline) — **[WORKING]**
 - Message status: sent / delivered / seen — **[WORKING]**
-- Group chat (3+ participants) — **[STUB]** (minimal backend group concept this round; UI stubbed)
-- Reactions (❤️ 😂 👍 😮 😢 🙏) — **[STUB]** (schema fields recommended; UI stubbed)
+- Group chat (3+ participants) — **[STUB]** (minimal backend group concept; UI stubbed)
+- Reactions (❤️ 😂 👍 😮 😢 🙏) — **[STUB]** (schema fields present; UI stubbed)
 - Reply (quote a message) — **[STUB]**
 - Forward message — **[STUB]**
-- Delete / unsend message — **[STUB]** (`deleted` field recommended)
+- Delete / unsend message — **[STUB]** (`deleted` field present)
 - Pin message — **[STUB]**
 - Search in conversation — **[STUB]**
 - Media: image / video / voice / file / location / contact — **[STUB]**
 
 **AI (offline, deterministic)**
 - Smart reply suggestions — **[WORKING]**
-- Tone adjuster (rewrite draft in a chosen tone) — **[STUB]** (new `src/ai.js` endpoint recommended)
-- Auto-translate message — **[STUB]** (simple deterministic endpoint)
-- Chat summary — **[STUB]** (new endpoint)
+- Tone adjuster (rewrite draft in a chosen tone) — **[WORKING]** (`/api/ai/tone-adjust`)
+- Auto-translate message — **[WORKING]** (`/api/ai/translate`, demo translation)
+- Chat summary — **[WORKING]** (`/api/ai/chat-summary`)
 - Spam / scam detection — **[STUB]**
 
 ### 5.2 Calling (audio) — see `feature_specs/calling.md`
@@ -117,7 +150,7 @@ Per-feature one-line specs live in `feature_specs/*.md`. This section is the mas
 - Call duration timer — **[WORKING]**
 - Call history (missed / received / dialed) — **[WORKING]**
 - Call logging (type/status/duration) — **[WORKING]**
-- Ringtone on incoming call — **[STUB]** (basic tone optional; full ringtone stubbed)
+- Ringtone on incoming call — **[STUB]**
 - Speaker toggle — **[STUB]**
 - Hold — **[STUB]**
 - Switch-to-video mid-call — **[STUB]**
@@ -129,7 +162,7 @@ Per-feature one-line specs live in `feature_specs/*.md`. This section is the mas
 **AI**
 - Noise cancellation — **[STUB]** (true ML denoise is [ROADMAP])
 - Live transcription — **[STUB]**
-- Post-call summary — **[STUB]** (can reuse a deterministic summary endpoint)
+- Post-call summary — **[STUB]**
 - Emotion detection — **[STUB]**
 
 ### 5.3 Video Calling — see `feature_specs/video_calling.md`
@@ -138,14 +171,16 @@ Per-feature one-line specs live in `feature_specs/*.md`. This section is the mas
 - 1:1 WebRTC video call (invite/accept/decline/end) — **[WORKING]**
 - Mute mic / camera on-off / hang up — **[WORKING]**
 - Local self-preview + remote view — **[WORKING]**
-- Switch front / rear camera — **[STUB]** (feasible via `getUserMedia` facingMode; stubbed this round)
+- Switch front / rear camera — **[STUB]** (feasible via `getUserMedia` facingMode)
 - Group grid layout (3+) — **[STUB]**
-- Screen share — **[STUB]** (desktop browsers support `getDisplayMedia`; iOS Safari does not — [ROADMAP] on iOS)
+- Screen share — **[STUB]** (desktop browsers support `getDisplayMedia`; now a normal desktop target — see note)
 - Virtual background — **[STUB]** (ML — [ROADMAP])
 - Beauty filter — **[STUB]**
 - Picture-in-Picture (PiP) — **[STUB]**
 - Connection-quality indicator — **[STUB]**
 - Call recording — **[STUB]** (server-side/group recording is [ROADMAP])
+
+> v3 note: since the app now explicitly targets **desktop browsers**, `getDisplayMedia` screen-share is feasible on desktop. It remains **[STUB]** this round (no new features) but is no longer "infeasible".
 
 **AI**
 - Virtual background (segmentation) — **[STUB]** / **[ROADMAP]** (ML)
@@ -160,38 +195,38 @@ Per-feature one-line specs live in `feature_specs/*.md`. This section is the mas
 - Create / read / update / delete note — **[WORKING]**
 - Notes list (most-recent-first) — **[WORKING]**
 - Rich text formatting — **[STUB]**
-- Folders / categories — **[STUB]** (`folder` column recommended)
-- Pin note — **[STUB]** (`pinned` column recommended)
+- Folders / categories — **[STUB]** (`folder` column present)
+- Pin note — **[STUB]** (`pinned` column present)
 - Search notes — **[STUB]**
-- Color labels — **[STUB]** (`color` column recommended)
-- Checklist items — **[STUB]** (`checklist` column recommended)
+- Color labels — **[STUB]** (`color` column present)
+- Checklist items — **[STUB]** (`checklist` column present)
 - Image attachment — **[STUB]**
 - Voice-to-note — **[STUB]**
-- Reminder — **[STUB]** (`reminder_at` column recommended; system alarm is [ROADMAP])
+- Reminder — **[STUB]** (`reminderAt` column present; system alarm is [ROADMAP])
 - Share / export PDF — **[STUB]**
 - History / versions — **[STUB]**
-- Lock (Face ID / PIN) — **[STUB]** (`locked` column; Face ID unavailable on web — PIN feasible later, [ROADMAP])
+- Lock (PIN) — **[STUB]** (`locked` column present; Face ID unavailable on web — [ROADMAP])
 
 **AI (offline, deterministic)**
 - Generate note from conversation (summary + action items) — **[WORKING]**
 - Write assistant — **[STUB]**
-- Auto-summarize a note — **[STUB]** (new endpoint)
-- Smart tags — **[STUB]** (new endpoint)
+- Auto-summarize a note — **[WORKING]** (`/api/ai/note-summarize`)
+- Smart tags — **[WORKING]** (`/api/ai/smart-tags`)
 - Grammar check — **[STUB]**
-- Action-item extractor — **[STUB]** (new endpoint)
-- Ask AI about this note — **[STUB]** (new endpoint)
+- Action-item extractor — **[WORKING]** (`/api/ai/action-items`)
+- Ask AI about this note — **[WORKING]** (`/api/ai/ask-about-note`)
 
 ### 5.5 Auth & Onboarding & Profile — see `feature_specs/auth_and_profile.md`
 
 **Onboarding/Auth**
-- Splash screen — **[STUB]** (visual; ties to PWA splash)
+- Splash screen — **[STUB]** (visual)
 - Welcome screen — **[STUB]**
-- Sign Up (display name → identity) — **[WORKING]** (lightweight identity from Round 1, surfaced as Sign Up)
-- Log In (return to existing identity) — **[STUB]** (re-entry via stored identity works; credential login stubbed)
+- Sign Up (display name → identity) — **[WORKING]**
+- Log In (return to existing identity) — **[STUB]**
 - OTP verification — **[STUB]**
 - Set Profile (display name + avatar) — **[STUB]** (display name works; avatar stubbed)
 
-**Profile tab**
+**Profile destination**
 - Avatar — **[STUB]**
 - Display name (view/edit) — **[WORKING]** (view; edit may be [STUB])
 - Personal QR (others scan to add as contact) — **[STUB]**
@@ -204,52 +239,57 @@ Per-feature one-line specs live in `feature_specs/*.md`. This section is the mas
 
 ## 6. Acceptance criteria (cross-feature rules)
 
-Detailed per-feature acceptance criteria live in `user_stories.md`. Two global rules:
+Detailed per-feature acceptance criteria live in `user_stories.md`. Global rules:
 
 - **AC-GLOBAL-WORKING:** A [WORKING] feature behaves per its acceptance criteria in `user_stories.md`, end-to-end, between two browser tabs and two devices.
-- **AC-GLOBAL-STUB:** Every [STUB] feature **has a visible, labeled control** in the correct screen. Activating it shows clear **"Coming soon"** feedback (toast/inline/sheet) and never appears broken, never silently does nothing, and never blocks navigation.
+- **AC-GLOBAL-STUB:** Every [STUB] feature **has a visible, labeled control** in the correct screen. Activating it shows clear **"Coming soon"** feedback and never appears broken, never silently does nothing, and never blocks navigation.
+- **AC-GLOBAL-RESPONSIVE (v3):** Every view renders correctly at **desktop (≥1024px)**, **tablet (768–1023px)**, and **mobile (<768px)** with no horizontal scroll, no clipped controls, and the correct navigation chrome (sidebar on desktop, bottom tabs on mobile). The Chats view is **two-pane** on desktop and **list→thread** on mobile.
+- **AC-GLOBAL-PERSIST (v3):** After a server restart and a browser reload, all conversations, messages, notes, and call logs reappear (see §2.4).
 
 ---
 
 ## 7. Accessibility requirements (WCAG 2.1 AA — applies to WORKING and STUB)
 
 - A1: Semantic HTML landmarks (header/nav/main/footer); single H1 per view.
-- A2: All interactive controls keyboard-operable with a visible focus indicator.
-- A3: All non-text controls (call, mic/camera, send, reactions, tab bar icons) have descriptive `aria-label`s readable by VoiceOver.
+- A2: All interactive controls keyboard-operable with a visible focus indicator. **(v3) On desktop, full keyboard navigation of the sidebar and two-pane chat is required — Tab/Shift-Tab order is logical; arrow-key nav within the conversation list is recommended.**
+- A3: All non-text controls (call, mic/camera, send, reactions, nav icons) have descriptive `aria-label`s.
 - A4: Live regions (`aria-live`) announce new incoming messages, incoming calls, and "Coming soon" stub feedback.
 - A5: Color contrast ≥ 4.5:1 normal text, ≥ 3:1 large text / UI components.
 - A6: Form inputs (sign up, OTP, profile, note editor) have associated `<label>`s; errors announced programmatically.
-- A7: Touch targets ≥ 44×44 px (mobile-first), including the bottom tab bar and reaction picker.
-- A8: No information by color alone (presence, message status, call status, quality indicator all carry text/icon).
+- A7: Touch/click targets ≥ 44×44 px on mobile; pointer targets on desktop are at least the platform default (larger optional). **(v3) Do NOT lock zoom — remove `maximum-scale=1.0`.**
+- A8: No information by color alone (presence, message status, call status all carry text/icon).
 - A9: Stub controls are **not** hidden from assistive tech; their "Coming soon" state is announced.
 
 ---
 
-## 8. Non-Goals & infeasible-on-web items (this round)
+## 8. Non-Goals (this round)
 
-**Explicit non-goals this round:**
+**Explicit non-goals:**
 - Native Swift/iOS app, SwiftUI, Xcode, App Store distribution.
-- Real authentication backend: passwords, OTP delivery (SMS/email), OAuth, account recovery. (Auth screens are present but **[STUB]**.)
-- End-to-end / Signal-protocol message encryption (transport is HTTPS/WSS only).
-- Real group **media** relay (group calls beyond signaling stubs); TURN/SFU infrastructure.
-- External LLM / Claude API calls or anything requiring an API key or network beyond the signaling server. All AI stays **local & deterministic**.
+- A rewrite or framework migration. v3 is layout + cleanup on the existing vanilla-JS app.
+- New features. The feature catalog (§5) is frozen for v3.
+- Real authentication backend: passwords, OTP delivery, OAuth, account recovery. (Auth screens present but **[STUB]**.)
+- End-to-end / Signal-protocol encryption (transport is HTTPS/WSS only).
+- Real group **media** relay; TURN/SFU infrastructure.
+- External LLM / Claude API calls. All AI stays **local & deterministic**.
 
-**Known infeasible / heavily-limited on iOS Safari (→ [STUB] or [ROADMAP]):**
-- **Screen sharing** — `getDisplayMedia` is unsupported on iOS Safari.
-- **Background push when app fully closed** — iOS Web Push is limited and unreliable; treat as [ROADMAP].
-- **OS-level call UI (CallKit) & system ringtone** — not exposed to web; in-app ringtone only.
-- **Face ID for app lock** — no web API; lock via PIN is a future option.
-- **Real ML media** — virtual background, beauty filter, auto-framing, noise cancellation, emotion/gesture recognition require on-device ML models we are not shipping this round → [STUB]/[ROADMAP].
-- **Virtual camera / true recording of remote streams** — not feasible from web reliably → [STUB]/[ROADMAP].
+**Still limited / deferred (→ [STUB] or [ROADMAP]):**
+- Real ML media (virtual background, beauty filter, auto-framing, noise cancellation, captions, emotion/gesture).
+- Background push when the app is closed (Web Push reliability varies by browser) — [ROADMAP].
+- OS-level call UI (CallKit) & system ringtone — in-app only.
+- Note lock via biometrics — PIN is the future path.
+- Media at scale (image/video/voice/file storage + delivery; location/contact sharing).
+
+> v3 removed several "infeasible on iOS Safari" caveats from v2 because the product now targets normal desktop + mobile browsers. Screen share, for example, is feasible on desktop and is merely a [STUB] this round rather than infeasible.
 
 ---
 
-## 9. Success metrics (acceptance for v2)
+## 9. Success metrics (acceptance for v3)
 
-- **Completeness:** 100% of features in §5 are represented in the UI (WORKING functional, STUB labeled with "Coming soon").
-- **No dead controls:** zero silent dead buttons — every stub announces "Coming soon".
-- **Working features intact:** all Round-1 [WORKING] features still pass their acceptance criteria.
-- **Navigability:** full screen flow (`screen_flow.md`) traversable on a phone; bottom tabs functional.
-- **Accessibility:** WCAG 2.1 AA checklist (§7) satisfied across WORKING and STUB controls.
-- **Install:** loads via QR → Safari → Add to Home Screen → full-screen standalone with splash.
+- **Responsive:** every view passes **AC-GLOBAL-RESPONSIVE** — sidebar + two-pane chat on desktop, single-column + bottom tabs on mobile, clean reflow with no horizontal scroll.
+- **iOS-specifics removed:** Apple-only meta tags, the zoom lock, and iPhone-only framing are gone (see `web_app_conversion.md` checklist); the app no longer reads as an iPhone-shaped column on desktop.
+- **Persistence:** passes **AC-GLOBAL-PERSIST** — conversations, messages, notes, call logs survive server restart + browser reload (verified against the SQLite file).
+- **Delivery:** loads over HTTPS at **https://bevane.loca.lt**; the WebSocket connects over **`wss`** through the tunnel; chat and calls work end-to-end through the tunnel.
+- **Completeness intact:** 100% of §5 features still represented (WORKING functional, STUB labeled "Coming soon"); zero silent dead buttons; all prior [WORKING] features still pass their criteria.
+- **Accessibility:** WCAG 2.1 AA checklist (§7) satisfied, including desktop keyboard navigation.
 - **No external API keys**; AI runs offline.
