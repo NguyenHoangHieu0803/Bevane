@@ -2,6 +2,44 @@
 
 A practical guide to running, using, testing, and extending **Bevane**, the private peer-to-peer communication app built by the AI Agent Team.
 
+> **Fastest way to open the app:** Deploy to Render once (see [§0](#0-deploy-to-render-persistent-public-url)) and every `git push` auto-deploys. No tunnel, no local server needed.
+
+---
+
+## 0. Deploy to Render (persistent public URL)
+
+Render gives Bevane a permanent HTTPS domain (e.g. `https://bevane.onrender.com`) that is always available. Every push to `main` triggers an automatic redeploy — you never need to start a local server or tunnel again.
+
+### One-time setup (5 minutes)
+
+1. **Push the repo to GitHub** (already done — `https://github.com/NguyenHoangHieu0803/Bevane`).
+
+2. **Sign up / log in at [render.com](https://render.com)** (free account, no credit card required).
+
+3. Click **"New +"** → **"Web Service"** → **"Connect a repository"** → select `NguyenHoangHieu0803/Bevane`.
+
+4. Render auto-detects `render.yaml` in the repo and pre-fills everything:
+   - **Runtime:** Node
+   - **Build command:** `npm install --omit=dev`
+   - **Start command:** `node server.js`
+   - **Health check:** `/api/users`
+
+5. Click **"Deploy Web Service"**. The first deploy takes ~2 minutes.
+
+6. Copy your service URL (e.g. `https://bevane.onrender.com`) — that is your permanent app address.
+
+### After setup
+
+- Push any change to `main` → Render rebuilds and redeploys automatically (usually < 2 min).
+- Open `https://bevane.onrender.com` in any browser or share the link.
+- No local server, no tunnel, no terminal needed.
+
+> **Free tier note:** Render's free tier spins down inactive services after ~15 minutes of no traffic. The first request after a sleep takes ~30 seconds to cold-start. Upgrade to the Starter plan ($7/mo) to keep it always-on.
+
+> **Database note:** The SQLite database (`data/bevane.db`) is stored on Render's ephemeral filesystem. It persists across normal restarts but is wiped on new deploys. For a demo app this is acceptable; for production use Render's PostgreSQL add-on.
+
+---
+
 > **What Bevane is:** a mobile-first **Progressive Web App (PWA)** delivering four features — Messaging, Voice Calling, Video Calling, and Notes (with offline AI assistance). It runs in iOS Safari, is installable to the Home Screen, and is reached by scanning a QR code that opens a public HTTPS URL.
 >
 > **Why a PWA and not a native iOS app:** the documented plan targeted native Swift/SwiftUI, but a native binary cannot be built or distributed from this Linux Codespace (it requires Xcode + an Apple Developer account + App Store/TestFlight). The PWA is what makes "scan → open → use on an iPhone" actually possible from this environment.

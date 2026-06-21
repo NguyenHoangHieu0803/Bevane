@@ -1,0 +1,6 @@
+node_modules/
+data/bevane.db
+data/bevane.db-shm
+data/bevane.db-wal
+*.log
+.env

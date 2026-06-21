@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: bevane
+    runtime: node
+    buildCommand: npm install --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /api/users
+    envVars:
+      - key: NODE_ENV
+        value: production
