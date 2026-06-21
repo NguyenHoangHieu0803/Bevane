@@ -69,10 +69,14 @@ function getBearerToken(req) {
 // Auth endpoints  (must come before the generic /api/* catch-all)
 // ---------------------------------------------------------------------------
 app.post('/api/auth/register', wrap((req, res) => {
-  const { username, password } = req.body || {};
-  const u = String(username || '').trim();
-  const p = String(password || '');
+  const { username, password, displayName } = req.body || {};
+  const u  = String(username    || '').trim();
+  const p  = String(password    || '');
+  const dn = String(displayName || '').trim();
 
+  if (!dn || dn.length > 40) {
+    return err(res, 400, 'invalid_display_name', 'Display name is required and must be 1–40 characters.');
+  }
   if (!u || u.length < 2 || u.length > 30) {
     return err(res, 400, 'invalid_username', 'Username must be 2–30 characters.');
   }
@@ -86,7 +90,7 @@ app.post('/api/auth/register', wrap((req, res) => {
     return err(res, 409, 'username_taken', 'That username is already taken.');
   }
   const passwordHash = auth.hashPassword(p);
-  const user = db.createUserWithAuth(u, u, passwordHash);
+  const user = db.createUserWithAuth(u, dn, passwordHash);
   const token = db.createSession(user.id);
   res.status(201).json({ id: user.id, displayName: user.displayName, token });
 }));

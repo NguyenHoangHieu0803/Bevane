@@ -44,7 +44,7 @@ function showAuthScreen(resolve) {
     tabRegister.classList.toggle('auth-tab--active', !toLogin);
     panelLogin.hidden = !toLogin;
     panelReg.hidden   =  toLogin;
-    (toLogin ? $('#login-username') : $('#reg-username')).focus();
+    (toLogin ? $('#login-username') : $('#reg-displayname')).focus();
   }
 
   tabLogin.addEventListener('click',    () => switchTab('login'));
@@ -94,16 +94,19 @@ function showAuthScreen(resolve) {
   regForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     regError.textContent = '';
+    const nameInput = $('#reg-displayname').value.trim();
     const username  = $('#reg-username').value.trim();
     const password  = $('#reg-password').value;
     const password2 = $('#reg-password2').value;
+    if (!nameInput) { regError.textContent = 'Please enter your display name.'; $('#reg-displayname').focus(); return; }
+    if (nameInput.length > 40) { regError.textContent = 'Display name must be 40 characters or fewer.'; $('#reg-displayname').focus(); return; }
     if (!username) { regError.textContent = 'Please enter a username.'; $('#reg-username').focus(); return; }
     if (password.length < 6) { regError.textContent = 'Password must be at least 6 characters.'; $('#reg-password').focus(); return; }
     if (password !== password2) { regError.textContent = 'Passwords do not match.'; $('#reg-password2').focus(); return; }
     const btn = regForm.querySelector('button[type="submit"]');
     btn.disabled = true; btn.textContent = 'Creating account…';
     try {
-      const { id, displayName, token } = await api.register(username, password);
+      const { id, displayName, token } = await api.register(username, password, nameInput);
       setAuth(id, displayName, token, true);
       hide(overlay);
       resolve();

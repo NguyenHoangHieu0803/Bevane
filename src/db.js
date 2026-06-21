@@ -244,7 +244,7 @@ const stmtInsertUser = db.prepare(
    VALUES (@id, @displayName, @createdAt, @lastSeenAt)`
 );
 const stmtGetUser = db.prepare(`SELECT * FROM users WHERE id = ?`);
-const stmtListUsers = db.prepare(`SELECT * FROM users ORDER BY display_name COLLATE NOCASE ASC`);
+const stmtListUsers = db.prepare(`SELECT * FROM users WHERE username IS NOT NULL ORDER BY display_name COLLATE NOCASE ASC`);
 const stmtTouchUser = db.prepare(`UPDATE users SET last_seen_at = ? WHERE id = ?`);
 
 function createUser(displayName) {

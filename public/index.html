@@ -63,6 +63,9 @@
       <!-- Register panel -->
       <div id="auth-panel-register" role="tabpanel" aria-labelledby="auth-tab-register" hidden>
         <form id="register-form" novalidate>
+          <label for="reg-displayname">Display name <span aria-hidden="true">*</span></label>
+          <input id="reg-displayname" name="displayname" type="text"
+                 autocomplete="name" required placeholder="Your full name or nickname" />
           <label for="reg-username">Username</label>
           <input id="reg-username" name="username" type="text"
                  autocomplete="username" required placeholder="Choose a username" />
