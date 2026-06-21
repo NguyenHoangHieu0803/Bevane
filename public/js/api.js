@@ -1,5 +1,7 @@
 // REST client. Same-origin: fetch('/api/...'). Throws ApiError on non-2xx.
 
+import { state } from './state.js';
+
 export class ApiError extends Error {
   constructor(status, code, message) {
     super(message || code || `HTTP ${status}`);
@@ -13,6 +15,9 @@ async function request(method, path, body) {
   if (body !== undefined) {
     opts.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(body);
+  }
+  if (state.token) {
+    opts.headers['Authorization'] = `Bearer ${state.token}`;
   }
   const res = await fetch(path, opts);
   if (res.status === 204) return null;
@@ -30,6 +35,12 @@ async function request(method, path, body) {
 }
 
 export const api = {
+  // Auth
+  register: (username, password) => request('POST', '/api/auth/register', { username, password }),
+  login:    (username, password) => request('POST', '/api/auth/login',    { username, password }),
+  logout:   ()                   => request('POST', '/api/auth/logout'),
+  me:       ()                   => request('GET',  '/api/auth/me'),
+
   // Users
   createUser: (displayName) => request('POST', '/api/users', { displayName }),
   listUsers: (excludeId) =>

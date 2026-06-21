@@ -1,27 +1,83 @@
-// Shared client state + tiny event bus. Identity persists in localStorage.
+// Shared client state + tiny event bus.
+// Identity and session token persist across page loads.
+// "Remember me" → localStorage; no "remember me" → sessionStorage.
 
-const LS_ID = 'bevane.userId';
-const LS_NAME = 'bevane.displayName';
+const KEY_TOKEN   = 'bevane.token';
+const KEY_ID      = 'bevane.userId';
+const KEY_NAME    = 'bevane.displayName';
+const KEY_REMEMBER = 'bevane.remember';
 
 export const state = {
-  userId: localStorage.getItem(LS_ID) || null,
-  displayName: localStorage.getItem(LS_NAME) || null,
-  // Active conversation context for the chat view.
+  userId:               null,
+  displayName:          null,
+  token:                null,
   activeConversationId: null,
-  activePeer: null, // { id, displayName, online }
-  // Live presence map: userId -> boolean.
-  presence: new Map(),
+  activePeer:           null,
+  presence:             new Map(),
 };
 
-export function setIdentity(id, displayName) {
-  state.userId = id;
+// Set full auth credentials (called after login or register).
+export function setAuth(id, displayName, token, remember = true) {
+  state.userId      = id;
   state.displayName = displayName;
-  localStorage.setItem(LS_ID, id);
-  localStorage.setItem(LS_NAME, displayName);
+  state.token       = token;
+  const storage = remember ? localStorage : sessionStorage;
+  try {
+    storage.setItem(KEY_TOKEN,    token);
+    storage.setItem(KEY_ID,       id);
+    storage.setItem(KEY_NAME,     displayName);
+    storage.setItem(KEY_REMEMBER, remember ? '1' : '0');
+  } catch { /* storage may be unavailable (private mode) */ }
+}
+
+// Clear all auth state (called on logout).
+export function clearAuth() {
+  state.userId               = null;
+  state.displayName          = null;
+  state.token                = null;
+  state.activeConversationId = null;
+  state.activePeer           = null;
+  state.presence.clear();
+  try {
+    for (const k of [KEY_TOKEN, KEY_ID, KEY_NAME, KEY_REMEMBER]) {
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    }
+  } catch { /* noop */ }
+}
+
+// Restore auth from storage on page load. Returns true if credentials found.
+export function loadStoredAuth() {
+  const token       = _read(KEY_TOKEN);
+  const userId      = _read(KEY_ID);
+  const displayName = _read(KEY_NAME);
+  if (token && userId) {
+    state.token       = token;
+    state.userId      = userId;
+    state.displayName = displayName || userId;
+    return true;
+  }
+  return false;
+}
+
+// Kept for profile name edits (local display-name update only).
+export function setIdentity(id, displayName) {
+  state.userId      = id;
+  state.displayName = displayName;
+  try {
+    const storage = localStorage.getItem(KEY_REMEMBER) !== '0' ? localStorage : sessionStorage;
+    storage.setItem(KEY_ID,   id);
+    storage.setItem(KEY_NAME, displayName);
+  } catch { /* noop */ }
 }
 
 export function isRegistered() {
-  return Boolean(state.userId);
+  return Boolean(state.userId && state.token);
+}
+
+function _read(key) {
+  try { return localStorage.getItem(key) || sessionStorage.getItem(key); }
+  catch { return null; }
 }
 
 // Minimal pub/sub so feature modules stay decoupled.

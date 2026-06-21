@@ -25,7 +25,7 @@ export function connect() {
   socket = new WebSocket(wsUrl());
 
   socket.onopen = () => {
-    socket.send(JSON.stringify({ type: 'auth', userId: state.userId }));
+    socket.send(JSON.stringify({ type: 'auth', userId: state.userId, token: state.token }));
   };
 
   socket.onmessage = (ev) => {

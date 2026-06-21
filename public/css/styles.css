@@ -158,6 +158,48 @@ button { font: inherit; cursor: pointer; }
   min-height: 1.2em;
 }
 
+/* -------------------- Auth tabs (Login / Register switcher) -------- */
+.auth-tabs {
+  display: flex;
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 4px;
+  margin: 0 0 20px;
+}
+.auth-tab {
+  flex: 1;
+  padding: 8px 4px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.auth-tab--active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-weight: normal;
+  color: var(--text-muted);
+  font-size: .9rem;
+  cursor: pointer;
+}
+.remember-me input[type="checkbox"] {
+  width: auto;
+  min-height: auto;
+  accent-color: var(--primary);
+}
+
 /* -------------------- App shell --------------------
    Mobile-first: single column (header + main + bottom tab bar), full height.
    The desktop sidebar exists in the DOM but is hidden below the desktop

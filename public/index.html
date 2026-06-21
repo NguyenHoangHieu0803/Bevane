@@ -28,26 +28,54 @@
     <p class="splash__tag">Private chat · calls · notes</p>
   </div>
 
-  <!-- ===================== Onboarding ===================== -->
-  <div id="onboarding" class="onboarding" role="dialog" aria-modal="true" aria-labelledby="onboarding-title" hidden>
+  <!-- ===================== Auth (Login / Register) ===================== -->
+  <div id="onboarding" class="onboarding" role="dialog" aria-modal="true" aria-labelledby="auth-heading" hidden>
     <div class="onboarding__card">
       <img class="onboarding__logo" src="/icons/icon.svg" alt="" width="72" height="72" />
-      <h1 id="onboarding-title">Welcome to Bevane</h1>
-      <p>Pick a display name to start. No password, no email.</p>
-      <form id="onboarding-form" novalidate>
-        <label for="display-name">Display name</label>
-        <input
-          id="display-name"
-          name="displayName"
-          type="text"
-          autocomplete="name"
-          maxlength="40"
-          required
-          aria-describedby="display-name-error"
-          placeholder="e.g. Alex" />
-        <p id="display-name-error" class="field-error" role="alert" aria-live="assertive"></p>
-        <button type="submit" class="btn btn--primary">Start using Bevane</button>
-      </form>
+      <h1 id="auth-heading">Bevane</h1>
+
+      <!-- Tab switcher -->
+      <div class="auth-tabs" role="tablist" aria-label="Login or Register">
+        <button class="auth-tab auth-tab--active" id="auth-tab-login"
+                role="tab" aria-selected="true" aria-controls="auth-panel-login" type="button">Log in</button>
+        <button class="auth-tab" id="auth-tab-register"
+                role="tab" aria-selected="false" aria-controls="auth-panel-register" type="button">Register</button>
+      </div>
+
+      <!-- Login panel -->
+      <div id="auth-panel-login" role="tabpanel" aria-labelledby="auth-tab-login">
+        <form id="login-form" novalidate>
+          <label for="login-username">Username</label>
+          <input id="login-username" name="username" type="text"
+                 autocomplete="username" required placeholder="Your username" />
+          <label for="login-password">Password</label>
+          <input id="login-password" name="password" type="password"
+                 autocomplete="current-password" required placeholder="Your password" />
+          <label class="remember-me">
+            <input id="login-remember" type="checkbox" checked />
+            Remember me
+          </label>
+          <p id="login-error" class="field-error" role="alert" aria-live="assertive"></p>
+          <button type="submit" class="btn btn--primary">Log in</button>
+        </form>
+      </div>
+
+      <!-- Register panel -->
+      <div id="auth-panel-register" role="tabpanel" aria-labelledby="auth-tab-register" hidden>
+        <form id="register-form" novalidate>
+          <label for="reg-username">Username</label>
+          <input id="reg-username" name="username" type="text"
+                 autocomplete="username" required placeholder="Choose a username" />
+          <label for="reg-password">Password</label>
+          <input id="reg-password" name="password" type="password"
+                 autocomplete="new-password" required placeholder="At least 6 characters" />
+          <label for="reg-password2">Repeat password</label>
+          <input id="reg-password2" name="password2" type="password"
+                 autocomplete="new-password" required placeholder="Repeat your password" />
+          <p id="register-error" class="field-error" role="alert" aria-live="assertive"></p>
+          <button type="submit" class="btn btn--primary">Create account</button>
+        </form>
+      </div>
     </div>
   </div>
 

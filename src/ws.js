@@ -109,10 +109,15 @@ function attachWebSocketServer(httpServer) {
 
     // ---- Auth (must precede everything else) ----
     if (type === 'auth') {
-      const userId = frame.userId;
+      const { userId, token } = frame;
       const user = userId && db.getUser(userId);
       if (!user) {
         return sendError(ws, 'auth_failed', 'Unknown userId.');
+      }
+      // Validate the session token issued at login.
+      const session = db.getSession(token);
+      if (!session || session.userId !== userId) {
+        return sendError(ws, 'auth_failed', 'Session token is invalid or expired. Please log in again.');
       }
       // Replace any prior socket for this user.
       const prev = clients.get(userId);

@@ -18,6 +18,7 @@ const express = require('express');
 
 const db = require('./src/db');
 const ai = require('./src/ai');
+const auth = require('./src/auth');
 const { attachWebSocketServer, isOnline } = require('./src/ws');
 
 const app = express();
@@ -55,6 +56,70 @@ function wrap(fn) {
     }
   };
 }
+
+// ---------------------------------------------------------------------------
+// Auth helpers
+// ---------------------------------------------------------------------------
+function getBearerToken(req) {
+  const h = req.headers.authorization || '';
+  return h.startsWith('Bearer ') ? h.slice(7).trim() : null;
+}
+
+// ---------------------------------------------------------------------------
+// Auth endpoints  (must come before the generic /api/* catch-all)
+// ---------------------------------------------------------------------------
+app.post('/api/auth/register', wrap((req, res) => {
+  const { username, password } = req.body || {};
+  const u = String(username || '').trim();
+  const p = String(password || '');
+
+  if (!u || u.length < 2 || u.length > 30) {
+    return err(res, 400, 'invalid_username', 'Username must be 2–30 characters.');
+  }
+  if (!/^[a-zA-Z0-9._-]+$/.test(u)) {
+    return err(res, 400, 'invalid_username', 'Username may only contain letters, numbers, . _ -');
+  }
+  if (p.length < 6) {
+    return err(res, 400, 'password_too_short', 'Password must be at least 6 characters.');
+  }
+  if (db.getUserByUsername(u)) {
+    return err(res, 409, 'username_taken', 'That username is already taken.');
+  }
+  const passwordHash = auth.hashPassword(p);
+  const user = db.createUserWithAuth(u, u, passwordHash);
+  const token = db.createSession(user.id);
+  res.status(201).json({ id: user.id, displayName: user.displayName, token });
+}));
+
+app.post('/api/auth/login', wrap((req, res) => {
+  const { username, password } = req.body || {};
+  const u = String(username || '').trim();
+  const p = String(password || '');
+  if (!u || !p) {
+    return err(res, 400, 'missing_credentials', 'Username and password are required.');
+  }
+  const user = db.getUserByUsername(u);
+  if (!user || !user.passwordHash || !auth.verifyPassword(p, user.passwordHash)) {
+    return err(res, 401, 'invalid_credentials', 'Incorrect username or password.');
+  }
+  const token = db.createSession(user.id);
+  res.json({ id: user.id, displayName: user.displayName, token });
+}));
+
+app.post('/api/auth/logout', wrap((req, res) => {
+  db.deleteSession(getBearerToken(req));
+  res.status(204).end();
+}));
+
+app.get('/api/auth/me', wrap((req, res) => {
+  const token = getBearerToken(req);
+  if (!token) return err(res, 401, 'not_authenticated', 'Token required.');
+  const session = db.getSession(token);
+  if (!session) return err(res, 401, 'invalid_token', 'Token is invalid or expired.');
+  const user = db.getUser(session.userId);
+  if (!user) return err(res, 401, 'user_not_found', 'User no longer exists.');
+  res.json({ id: user.id, displayName: user.displayName });
+}));
 
 // ---------------------------------------------------------------------------
 // Users

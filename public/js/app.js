@@ -2,7 +2,7 @@
 
 import { state, on, emit } from './state.js';
 import { connect } from './ws.js';
-import { ensureRegistered } from './onboarding.js';
+import { ensureAuthenticated } from './onboarding.js';
 import { $, $$, show, hide, toast, isTwoPane, onTwoPaneChange } from './ui.js';
 
 import { initChats, loadConversations, openThread, closeThread } from './chats.js';
@@ -113,7 +113,7 @@ async function boot() {
   // is above the onboarding form (500), so without this the splash permanently
   // blocks new users from registering. (BUG-CRITICAL-001)
   hideSplash();
-  await ensureRegistered();
+  await ensureAuthenticated();
 
   // identity ready
   $('#self-name').textContent = state.displayName;
@@ -141,6 +141,18 @@ async function boot() {
 
   connect();
   showView('chats');
+
+  // Ask for notification permission once the main UI is visible.
+  // A small delay lets the browser settle after the login gesture clears.
+  requestNotificationPermission();
+}
+
+function requestNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'default') return;
+  setTimeout(() => {
+    Notification.requestPermission().catch(() => {});
+  }, 1500);
 }
 
 function hideSplash() {

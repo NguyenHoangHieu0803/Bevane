@@ -2,7 +2,8 @@
 // My QR (WORKING, real QR), Scan QR (stub), change password / notifications /
 // avatar upload (stubs), Log out (WORKING — clears identity + reloads).
 
-import { state, setIdentity } from './state.js';
+import { state, setIdentity, clearAuth } from './state.js';
+import { api } from './api.js';
 import { $, el, clear, show, hide, toast, announce, comingSoon } from './ui.js';
 import { toCanvas } from './vendor/qrcode.js';
 
@@ -67,12 +68,10 @@ function saveName(e) {
 }
 
 // ----------------------------------------------------------------- Log out
-function logout() {
-  if (!confirm('Log out of Bevane? This clears your identity on this device.')) return;
-  try {
-    localStorage.removeItem('bevane.userId');
-    localStorage.removeItem('bevane.displayName');
-  } catch {}
+async function logout() {
+  if (!confirm('Log out of Bevane?')) return;
+  try { await api.logout(); } catch { /* server may be unreachable; clear locally anyway */ }
+  clearAuth();
   location.reload();
 }
 

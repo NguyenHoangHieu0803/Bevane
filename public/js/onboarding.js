@@ -1,51 +1,118 @@
-// First-launch registration. POST /api/users, persist id, then resolve.
+// Authentication gate.
+// Validates a stored session token, or shows Login / Register tabs until the
+// user is authenticated, then resolves the returned promise.
 
 import { api, ApiError } from './api.js';
-import { setIdentity, isRegistered } from './state.js';
+import { setAuth, loadStoredAuth, state } from './state.js';
 import { $, show, hide } from './ui.js';
 
-// Returns a promise that resolves once a valid identity exists.
-export function ensureRegistered() {
+export function ensureAuthenticated() {
   return new Promise((resolve) => {
-    if (isRegistered()) { resolve(); return; }
+    if (loadStoredAuth()) {
+      // Token found in storage — validate it with the server.
+      api.me()
+        .then((user) => {
+          // Server confirmed the token; refresh displayName in case it changed.
+          state.displayName = user.displayName;
+          resolve();
+        })
+        .catch(() => {
+          // Token expired or server restarted — show login form.
+          showAuthScreen(resolve);
+        });
+      return;
+    }
+    showAuthScreen(resolve);
+  });
+}
 
-    const overlay = $('#onboarding');
-    const form = $('#onboarding-form');
-    const input = $('#display-name');
-    const errEl = $('#display-name-error');
+// --------------------------------------------------------------------------
+function showAuthScreen(resolve) {
+  const overlay = $('#onboarding');
+  show(overlay);
 
-    show(overlay);
-    input.focus();
+  const tabLogin    = $('#auth-tab-login');
+  const tabRegister = $('#auth-tab-register');
+  const panelLogin  = $('#auth-panel-login');
+  const panelReg    = $('#auth-panel-register');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errEl.textContent = '';
-      const name = input.value.trim();
-      if (!name) {
-        errEl.textContent = 'Please enter a display name.';
-        input.setAttribute('aria-invalid', 'true');
-        input.focus();
-        return;
-      }
-      if (name.length > 40) {
-        errEl.textContent = 'Display name must be 40 characters or fewer.';
-        input.focus();
-        return;
-      }
-      const submitBtn = form.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-      try {
-        const user = await api.createUser(name);
-        setIdentity(user.id, user.displayName);
-        input.removeAttribute('aria-invalid');
-        hide(overlay);
-        resolve();
-      } catch (err) {
-        submitBtn.disabled = false;
-        const msg = err instanceof ApiError ? err.message : 'Could not register. Try again.';
-        errEl.textContent = msg;
-        input.focus();
-      }
+  function switchTab(which) {
+    const toLogin = which === 'login';
+    tabLogin.setAttribute('aria-selected',    String(toLogin));
+    tabLogin.classList.toggle('auth-tab--active', toLogin);
+    tabRegister.setAttribute('aria-selected', String(!toLogin));
+    tabRegister.classList.toggle('auth-tab--active', !toLogin);
+    panelLogin.hidden = !toLogin;
+    panelReg.hidden   =  toLogin;
+    (toLogin ? $('#login-username') : $('#reg-username')).focus();
+  }
+
+  tabLogin.addEventListener('click',    () => switchTab('login'));
+  tabRegister.addEventListener('click', () => switchTab('register'));
+
+  // Arrow-key navigation between tabs (ARIA tablist pattern).
+  [tabLogin, tabRegister].forEach((tab, i, tabs) => {
+    tab.addEventListener('keydown', (e) => {
+      const dir = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : (e.key === 'ArrowLeft' || e.key === 'ArrowUp') ? -1 : 0;
+      if (dir) { e.preventDefault(); const next = tabs[(i + dir + tabs.length) % tabs.length]; next.click(); next.focus(); }
     });
   });
+
+  // ---- Login ----
+  const loginForm  = $('#login-form');
+  const loginError = $('#login-error');
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.textContent = '';
+    const username = $('#login-username').value.trim();
+    const password = $('#login-password').value;
+    const remember = $('#login-remember').checked;
+    if (!username || !password) {
+      loginError.textContent = 'Please enter your username and password.';
+      return;
+    }
+    const btn = loginForm.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = 'Logging in…';
+    try {
+      const { id, displayName, token } = await api.login(username, password);
+      setAuth(id, displayName, token, remember);
+      hide(overlay);
+      resolve();
+    } catch (err) {
+      loginError.textContent = err instanceof ApiError ? err.message : 'Could not log in. Try again.';
+      btn.disabled = false; btn.textContent = 'Log in';
+      $('#login-password').value = '';
+      $('#login-username').focus();
+    }
+  });
+
+  // ---- Register ----
+  const regForm  = $('#register-form');
+  const regError = $('#register-error');
+
+  regForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    regError.textContent = '';
+    const username  = $('#reg-username').value.trim();
+    const password  = $('#reg-password').value;
+    const password2 = $('#reg-password2').value;
+    if (!username) { regError.textContent = 'Please enter a username.'; $('#reg-username').focus(); return; }
+    if (password.length < 6) { regError.textContent = 'Password must be at least 6 characters.'; $('#reg-password').focus(); return; }
+    if (password !== password2) { regError.textContent = 'Passwords do not match.'; $('#reg-password2').focus(); return; }
+    const btn = regForm.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = 'Creating account…';
+    try {
+      const { id, displayName, token } = await api.register(username, password);
+      setAuth(id, displayName, token, true);
+      hide(overlay);
+      resolve();
+    } catch (err) {
+      regError.textContent = err instanceof ApiError ? err.message : 'Could not register. Try again.';
+      btn.disabled = false; btn.textContent = 'Create account';
+      $('#reg-username').focus();
+    }
+  });
+
+  $('#login-username').focus();
 }

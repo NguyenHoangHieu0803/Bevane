@@ -91,6 +91,16 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_calls_caller ON call_logs(caller_id, started_at);
   CREATE INDEX IF NOT EXISTS idx_calls_callee ON call_logs(callee_id, started_at);
 
+  -- Auth: sessions keyed by random UUID token.
+  CREATE TABLE IF NOT EXISTS sessions (
+    token       TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL,
+    created_at  INTEGER NOT NULL,
+    expires_at  INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
   -- Round-2: groups (OPTIONAL/MINIMAL — storage + listing only, no media fan-out).
   CREATE TABLE IF NOT EXISTS groups (
     id          TEXT PRIMARY KEY,
@@ -119,6 +129,17 @@ function addColumnIfMissing(table, column, definition) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
 }
+
+// Users: username and password_hash for account-based auth.
+addColumnIfMissing('users', 'username', 'TEXT');
+addColumnIfMissing('users', 'password_hash', 'TEXT');
+// Partial unique index: two accounts cannot share a username, but legacy
+// anonymous rows (username IS NULL) are excluded from the constraint.
+try {
+  db.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username) WHERE username IS NOT NULL'
+  );
+} catch { /* SQLite < 3.15 may not support partial indices — tolerate */ }
 
 // Notes: folder, pinned, color, reminder_at, locked, checklist.
 addColumnIfMissing('notes', 'folder', 'TEXT');
@@ -541,6 +562,60 @@ function listCalls(userId) {
 }
 
 // ---------------------------------------------------------------------------
+// Auth — users with credentials
+// ---------------------------------------------------------------------------
+const stmtInsertUserWithAuth = db.prepare(
+  `INSERT INTO users (id, display_name, username, password_hash, created_at, last_seen_at)
+   VALUES (@id, @displayName, @username, @passwordHash, @createdAt, @lastSeenAt)`
+);
+const stmtGetUserByUsername = db.prepare(`SELECT * FROM users WHERE username = ?`);
+
+function createUserWithAuth(username, displayName, passwordHash) {
+  const id = require('crypto').randomUUID();
+  const ts = now();
+  stmtInsertUserWithAuth.run({ id, displayName: displayName || username, username, passwordHash, createdAt: ts, lastSeenAt: ts });
+  return mapUser(stmtGetUser.get(id));
+}
+
+function getUserByUsername(username) {
+  const row = stmtGetUserByUsername.get(username);
+  if (!row) return null;
+  return { ...mapUser(row), username: row.username, passwordHash: row.password_hash };
+}
+
+// ---------------------------------------------------------------------------
+// Sessions
+// ---------------------------------------------------------------------------
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+const stmtInsertSession = db.prepare(
+  `INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)`
+);
+const stmtGetSession = db.prepare(`SELECT * FROM sessions WHERE token = ?`);
+const stmtDeleteSession = db.prepare(`DELETE FROM sessions WHERE token = ?`);
+const stmtDeleteExpiredSessions = db.prepare(`DELETE FROM sessions WHERE expires_at < ?`);
+
+function createSession(userId) {
+  const token = require('crypto').randomUUID();
+  const ts = now();
+  stmtDeleteExpiredSessions.run(ts); // prune on every new session (cheap housekeeping)
+  stmtInsertSession.run(token, userId, ts, ts + SESSION_TTL_MS);
+  return token;
+}
+
+function getSession(token) {
+  if (!token) return null;
+  const row = stmtGetSession.get(token);
+  if (!row) return null;
+  if (row.expires_at < now()) { stmtDeleteSession.run(token); return null; }
+  return { token: row.token, userId: row.user_id, createdAt: row.created_at, expiresAt: row.expires_at };
+}
+
+function deleteSession(token) {
+  if (token) stmtDeleteSession.run(token);
+}
+
+// ---------------------------------------------------------------------------
 // Groups (Round-2, minimal: storage + listing only)
 // ---------------------------------------------------------------------------
 const stmtInsertGroup = db.prepare(
@@ -633,4 +708,11 @@ module.exports = {
   createGroup,
   getGroup,
   listGroupsForUser,
+  // auth
+  createUserWithAuth,
+  getUserByUsername,
+  // sessions
+  createSession,
+  getSession,
+  deleteSession,
 };

@@ -310,6 +310,18 @@ async function generateNoteFromConversation() {
   }
 }
 
+// ----------------------------------------------------------------- notifications
+function notifyMessage(body, senderName, conversationId) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!document.hidden) return; // app is visible — no popup needed
+  const n = new Notification(senderName || 'Bevane', {
+    body,
+    icon: '/icons/icon.svg',
+    tag: `msg-${conversationId}`, // collapses repeated notifications for same chat
+  });
+  n.onclick = () => { window.focus(); n.close(); };
+}
+
 // ----------------------------------------------------------------- wiring
 export function initChats() {
   // New conversation -> open peer picker
@@ -403,6 +415,7 @@ export function initChats() {
       loadConversations();
       if (message.senderId !== state.userId) {
         announce('New message received.');
+        notifyMessage(message.body, state.presence.get ? 'Bevane' : 'Bevane', message.conversationId);
       }
       return;
     }
@@ -411,9 +424,11 @@ export function initChats() {
     } else {
       appendMessage(message);
       if (message.senderId !== state.userId) {
-        announce(`New message from ${state.activePeer ? state.activePeer.displayName : 'peer'}: ${message.body}`);
+        const peerName = state.activePeer ? state.activePeer.displayName : 'peer';
+        announce(`New message from ${peerName}: ${message.body}`);
         // we're viewing it → mark read
         wsSend({ type: 'chat:read', conversationId: state.activeConversationId, userId: state.userId });
+        notifyMessage(message.body, peerName, message.conversationId);
       }
     }
     scrollMessages();
