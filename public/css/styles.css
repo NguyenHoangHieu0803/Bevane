@@ -483,78 +483,139 @@ button { font: inherit; cursor: pointer; }
 .modal__card .btn { width: 100%; margin-top: 12px; }
 
 /* -------------------- Call overlay -------------------- */
+/* -------------------- Call overlay (full-screen video + HUD) -------- */
 .call-overlay {
   position: fixed; inset: 0;
   z-index: 600;
-  background: #05080f;
-  display: flex;
-  flex-direction: column;
-  padding: env(safe-area-inset-top) 0 calc(20px + env(safe-area-inset-bottom));
-}
-.call-overlay__videos {
-  position: relative;
-  flex: 1 1 auto;
   background: #000;
-  overflow: hidden;
 }
+
+/* Remote video fills the entire overlay */
 .call-video { background: #000; }
 .call-video--remote {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover;
 }
+
+/* Self-view pip — draggable */
 .call-video--local {
   position: absolute;
+  top: calc(env(safe-area-inset-top) + 80px);
   right: 12px;
-  bottom: 12px;
-  width: 110px;
-  height: 150px;
+  width: 100px;
+  height: 136px;
   object-fit: cover;
-  border-radius: 12px;
-  border: 2px solid var(--border);
-  z-index: 2;
+  border-radius: 14px;
+  border: 2px solid rgba(255,255,255,.35);
+  z-index: 4;
+  cursor: grab;
+  touch-action: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,.5);
+  user-select: none;
+}
+.call-video--local.dragging { cursor: grabbing; }
+
+/* Audio-only avatar placeholder */
+.call-audio-avatar {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  font-size: 6rem;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, #1a2a4a 0%, #05080f 100%);
 }
 .call-overlay--audio .call-video { display: none; }
-.call-overlay--audio .call-overlay__videos {
-  display: grid;
-  place-items: center;
+.call-overlay--audio .call-audio-avatar { display: flex; }
+
+/* HUD layer — overlaid on video, flex-column top→bottom */
+.call-hud {
+  position: absolute; inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;   /* pass clicks to video */
 }
-.call-overlay__info {
+.call-hud > * { pointer-events: auto; }
+
+/* Top bar: quality badge + peer name + status */
+.call-hud__top {
+  padding: calc(env(safe-area-inset-top) + 14px) 16px 24px;
+  background: linear-gradient(to bottom, rgba(0,0,0,.65) 0%, transparent 100%);
   text-align: center;
-  padding: 16px;
-  color: var(--text);
 }
-.call-overlay--audio .call-overlay__info {
-  position: absolute;
-  top: 30%;
-  left: 0; right: 0;
+.call-overlay__peer   { font-size: 1.4rem; font-weight: 700; color: #fff; margin: 4px 0 4px; }
+.call-overlay__status { font-size: .95rem; color: rgba(255,255,255,.75); margin: 0; }
+
+/* Bottom sheet */
+.call-hud__sheet {
+  margin-top: auto;
+  background: rgba(8, 12, 22, 0.82);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 22px 22px 0 0;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
 }
-.call-overlay__peer { font-size: 1.5rem; font-weight: 700; margin: 0 0 6px; }
-.call-overlay__status { font-size: 1rem; color: var(--text-muted); margin: 0; }
+
+/* Handle / toggle bar */
+.call-sheet__handle {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 10px 0 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.call-sheet__handle-bar {
+  display: block;
+  width: 40px; height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,.3);
+  transition: background .15s;
+}
+.call-sheet__handle:hover .call-sheet__handle-bar,
+.call-sheet__handle:focus-visible .call-sheet__handle-bar {
+  background: rgba(255,255,255,.6);
+}
+
+/* Controls grid */
 .call-overlay__controls {
   display: flex;
   justify-content: center;
-  gap: 16px;
+  gap: 14px;
   flex-wrap: wrap;
-  padding: 16px;
+  padding: 6px 16px 10px;
 }
+
+/* Collapsed: hide secondary buttons + shrink sheet */
+.call-hud__sheet.collapsed .call-overlay__controls [data-primary="false"] {
+  display: none;
+}
+
+/* Buttons */
 .callbtn {
-  min-width: 64px;
-  min-height: 64px;
+  width: 54px; height: 54px;
+  flex: 0 0 auto;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.13);
+  color: #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  font-size: 1.4rem;
+  font-size: 1.25rem;
+  -webkit-tap-highlight-color: transparent;
 }
-.callbtn__label { font-size: .65rem; font-weight: 700; }
-.callbtn--accept { background: var(--accent); color: #03210b; border-color: var(--accent); }
-.callbtn--decline { background: var(--danger); color: #2a0000; border-color: var(--danger); }
+.callbtn__label { font-size: .6rem; font-weight: 700; letter-spacing: .01em; }
+.callbtn--accept  { background: var(--accent);  color: #03210b; border-color: var(--accent); }
+.callbtn--decline { background: var(--danger);  color: #fff;    border-color: var(--danger); }
 .callbtn[aria-pressed="true"] {
   background: var(--warning);
   color: #2a1c00;
@@ -859,15 +920,13 @@ button { font: inherit; cursor: pointer; }
 
 /* -------------------- Call quality -------------------- */
 .call-quality {
-  position: absolute;
-  top: calc(12px + env(safe-area-inset-top));
-  left: 12px;
-  z-index: 3;
-  background: rgba(0,0,0,.5);
-  color: var(--text);
-  padding: 4px 10px;
+  display: inline-block;
+  background: rgba(0,0,0,.45);
+  color: #fff;
+  padding: 3px 10px;
   border-radius: 999px;
-  font-size: .8rem;
+  font-size: .75rem;
+  margin-bottom: 2px;
 }
 .call-overlay--audio .call-quality { display: none; }
 
@@ -1020,12 +1079,8 @@ button { font: inherit; cursor: pointer; }
      keeps both panes visible (set by notes.js / app.js). */
   #view-notes.has-editor #notes-list-pane { display: flex; }
 
-  /* Call overlay sized for desktop (centered modal card, not a phone strip). */
-  .call-overlay {
-    inset: 0;
-    padding: 0;
-  }
-  .call-overlay__controls { padding: 20px; }
+  /* Call overlay: full-screen on desktop too (video chat). */
+  .call-overlay__controls { padding: 10px 20px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

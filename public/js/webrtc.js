@@ -33,12 +33,68 @@ function showOverlay(peerName, callType) {
   const ov = overlay();
   ov.classList.toggle('call-overlay--audio', callType === 'voice');
   $('#call-peer-name').textContent = peerName;
+  // Always start with sheet expanded on new call
+  $('#call-sheet').classList.remove('collapsed');
+  const toggle = $('#call-sheet-toggle');
+  toggle.setAttribute('aria-expanded', 'true');
+  toggle.setAttribute('aria-label', 'Collapse controls');
+  // Reset self-view position
+  const lv = $('#local-video');
+  lv.style.top = ''; lv.style.left = '';
+  lv.style.right = '12px'; lv.style.bottom = '';
   show(ov);
 }
 function hideOverlay() {
   hide(overlay());
   $('#remote-video').srcObject = null;
   $('#local-video').srcObject = null;
+}
+
+// ---------------------------------------------------------------- draggable self-view
+function makeDraggable(el) {
+  let ox = 0, oy = 0, sx = 0, sy = 0;
+
+  function start(cx, cy) {
+    const r = el.getBoundingClientRect();
+    ox = r.left; oy = r.top;
+    sx = cx;     sy = cy;
+    el.style.left   = r.left + 'px';
+    el.style.top    = r.top  + 'px';
+    el.style.right  = 'auto';
+    el.style.bottom = 'auto';
+    el.style.transition = 'none';
+    el.classList.add('dragging');
+  }
+  function move(cx, cy) {
+    const dx = cx - sx, dy = cy - sy;
+    const maxX = window.innerWidth  - el.offsetWidth  - 8;
+    const maxY = window.innerHeight - el.offsetHeight - 8;
+    el.style.left = Math.max(8, Math.min(ox + dx, maxX)) + 'px';
+    el.style.top  = Math.max(8, Math.min(oy + dy, maxY)) + 'px';
+  }
+  function end() { el.classList.remove('dragging'); }
+
+  // Touch
+  el.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    start(t.clientX, t.clientY);
+    e.preventDefault();
+  }, { passive: false });
+  el.addEventListener('touchmove', (e) => {
+    move(e.touches[0].clientX, e.touches[0].clientY);
+    e.preventDefault();
+  }, { passive: false });
+  el.addEventListener('touchend', end);
+
+  // Mouse
+  el.addEventListener('mousedown', (e) => {
+    start(e.clientX, e.clientY);
+    const onMove = (e) => move(e.clientX, e.clientY);
+    const onUp   = () => { end(); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+    e.preventDefault();
+  });
 }
 
 function setControls({ accept, decline, mute, camera, end }) {
@@ -378,6 +434,19 @@ export function initCalls() {
   $('#call-end-btn').addEventListener('click', endCall);
   $('#call-mute-btn').addEventListener('click', toggleMute);
   $('#call-camera-btn').addEventListener('click', toggleCamera);
+
+  // Sheet expand / collapse toggle
+  $('#call-sheet-toggle').addEventListener('click', () => {
+    const sheet = $('#call-sheet');
+    const expanded = sheet.classList.toggle('collapsed');
+    // classList.toggle returns true when class was ADDED (collapsed)
+    const isNowExpanded = !expanded;
+    $('#call-sheet-toggle').setAttribute('aria-expanded', String(isNowExpanded));
+    $('#call-sheet-toggle').setAttribute('aria-label', isNowExpanded ? 'Collapse controls' : 'Expand controls');
+  });
+
+  // Draggable self-view
+  makeDraggable($('#local-video'));
 
   // Extended controls
   $('#call-switchcam-btn').addEventListener('click', switchCamera);   // WORKING where supported
