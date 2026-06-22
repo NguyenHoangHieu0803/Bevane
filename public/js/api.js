@@ -39,7 +39,9 @@ export const api = {
   register: (username, password, displayName) => request('POST', '/api/auth/register', { username, password, displayName }),
   login:    (username, password) => request('POST', '/api/auth/login',    { username, password }),
   logout:   ()                   => request('POST', '/api/auth/logout'),
-  me:       ()                   => request('GET',  '/api/auth/me'),
+  me:             ()                              => request('GET',   '/api/auth/me'),
+  updateProfile:  (displayName, avatarUrl)        => request('PATCH', '/api/profile', { displayName, avatarUrl }),
+  changePassword: (currentPassword, newPassword)  => request('POST',  '/api/auth/change-password', { currentPassword, newPassword }),
 
   // Users
   createUser: (displayName) => request('POST', '/api/users', { displayName }),

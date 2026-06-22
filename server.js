@@ -65,6 +65,15 @@ function getBearerToken(req) {
   return h.startsWith('Bearer ') ? h.slice(7).trim() : null;
 }
 
+// Returns session or sends 401 and returns null. Use in route handlers.
+function requireAuth(req, res) {
+  const token = getBearerToken(req);
+  if (!token) { err(res, 401, 'not_authenticated', 'Token required.'); return null; }
+  const session = db.getSession(token);
+  if (!session) { err(res, 401, 'invalid_token', 'Token is invalid or expired.'); return null; }
+  return session;
+}
+
 // ---------------------------------------------------------------------------
 // Auth endpoints  (must come before the generic /api/* catch-all)
 // ---------------------------------------------------------------------------
@@ -90,7 +99,7 @@ app.post('/api/auth/register', wrap((req, res) => {
   const passwordHash = auth.hashPassword(p);
   const user = db.createUserWithAuth(u, dn, passwordHash);
   const token = db.createSession(user.id);
-  res.status(201).json({ id: user.id, displayName: user.displayName, token });
+  res.status(201).json({ id: user.id, displayName: user.displayName, avatarUrl: user.avatarUrl, token });
 }));
 
 app.post('/api/auth/login', wrap((req, res) => {
@@ -105,7 +114,7 @@ app.post('/api/auth/login', wrap((req, res) => {
     return err(res, 401, 'invalid_credentials', 'Incorrect username or password.');
   }
   const token = db.createSession(user.id);
-  res.json({ id: user.id, displayName: user.displayName, token });
+  res.json({ id: user.id, displayName: user.displayName, avatarUrl: user.avatarUrl, token });
 }));
 
 app.post('/api/auth/logout', wrap((req, res) => {
@@ -114,13 +123,55 @@ app.post('/api/auth/logout', wrap((req, res) => {
 }));
 
 app.get('/api/auth/me', wrap((req, res) => {
-  const token = getBearerToken(req);
-  if (!token) return err(res, 401, 'not_authenticated', 'Token required.');
-  const session = db.getSession(token);
-  if (!session) return err(res, 401, 'invalid_token', 'Token is invalid or expired.');
+  const session = requireAuth(req, res);
+  if (!session) return;
   const user = db.getUser(session.userId);
   if (!user) return err(res, 401, 'user_not_found', 'User no longer exists.');
-  res.json({ id: user.id, displayName: user.displayName });
+  res.json({ id: user.id, displayName: user.displayName, avatarUrl: user.avatarUrl });
+}));
+
+app.patch('/api/profile', wrap((req, res) => {
+  const session = requireAuth(req, res);
+  if (!session) return;
+  const { displayName, avatarUrl } = req.body || {};
+  const updates = {};
+  if (displayName != null) {
+    const dn = String(displayName).trim();
+    if (!dn || dn.length > 40) {
+      return err(res, 400, 'invalid_display_name', 'Display name must be 1–40 characters.');
+    }
+    updates.displayName = dn;
+  }
+  if (avatarUrl != null) {
+    if (avatarUrl !== '' && !String(avatarUrl).startsWith('data:image/')) {
+      return err(res, 400, 'invalid_avatar', 'Avatar must be an image data URL.');
+    }
+    if (String(avatarUrl).length > 300000) {
+      return err(res, 400, 'avatar_too_large', 'Avatar image is too large.');
+    }
+    updates.avatarUrl = avatarUrl || null;
+  }
+  const updated = db.updateUser(session.userId, updates);
+  res.json({ id: updated.id, displayName: updated.displayName, avatarUrl: updated.avatarUrl });
+}));
+
+app.post('/api/auth/change-password', wrap((req, res) => {
+  const session = requireAuth(req, res);
+  if (!session) return;
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    return err(res, 400, 'missing_params', 'currentPassword and newPassword are required.');
+  }
+  if (String(newPassword).length < 6) {
+    return err(res, 400, 'password_too_short', 'New password must be at least 6 characters.');
+  }
+  const userWithAuth = db.getUserWithAuth(session.userId);
+  if (!userWithAuth || !userWithAuth.passwordHash
+      || !auth.verifyPassword(currentPassword, userWithAuth.passwordHash)) {
+    return err(res, 401, 'wrong_password', 'Current password is incorrect.');
+  }
+  db.updateUserPassword(session.userId, auth.hashPassword(newPassword));
+  res.status(204).end();
 }));
 
 // ---------------------------------------------------------------------------

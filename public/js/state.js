@@ -10,6 +10,7 @@ const KEY_REMEMBER = 'bevane.remember';
 export const state = {
   userId:               null,
   displayName:          null,
+  avatarUrl:            null,
   token:                null,
   activeConversationId: null,
   activePeer:           null,
@@ -34,6 +35,7 @@ export function setAuth(id, displayName, token, remember = true) {
 export function clearAuth() {
   state.userId               = null;
   state.displayName          = null;
+  state.avatarUrl            = null;
   state.token                = null;
   state.activeConversationId = null;
   state.activePeer           = null;

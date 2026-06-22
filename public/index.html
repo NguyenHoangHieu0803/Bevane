@@ -331,7 +331,6 @@
             <div id="profile-avatar" class="profile-avatar" aria-hidden="true">?</div>
             <button id="profile-avatar-btn" class="btn btn--secondary" type="button">Change avatar</button>
             <p id="profile-display-name" class="profile-name"></p>
-            <p id="profile-id" class="meta-label profile-id"></p>
           </div>
 
           <ul class="profile-actions" aria-label="Profile actions">
@@ -453,6 +452,26 @@
         <div class="note-editor__actions">
           <button type="submit" class="btn btn--primary">Save</button>
           <button id="editname-cancel" type="button" class="btn btn--secondary">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== Change password dialog ===================== -->
+  <div id="changepw-dialog" class="modal" role="dialog" aria-modal="true" aria-labelledby="changepw-title" hidden>
+    <div class="modal__card">
+      <h2 id="changepw-title">Change password</h2>
+      <form id="changepw-form" novalidate>
+        <label for="changepw-current">Current password</label>
+        <input id="changepw-current" name="current" type="password" autocomplete="current-password" required placeholder="Your current password" />
+        <label for="changepw-new">New password</label>
+        <input id="changepw-new" name="new" type="password" autocomplete="new-password" required placeholder="At least 6 characters" />
+        <label for="changepw-repeat">Repeat new password</label>
+        <input id="changepw-repeat" name="repeat" type="password" autocomplete="new-password" required placeholder="Repeat new password" />
+        <p id="changepw-error" class="field-error" role="alert" aria-live="assertive"></p>
+        <div class="dialog-actions">
+          <button type="submit" class="btn btn--primary">Change password</button>
+          <button id="changepw-cancel" type="button" class="btn btn--secondary">Cancel</button>
         </div>
       </form>
     </div>

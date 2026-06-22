@@ -145,6 +145,28 @@ async function boot() {
   // Ask for notification permission once the main UI is visible.
   // A small delay lets the browser settle after the login gesture clears.
   requestNotificationPermission();
+  requestMediaPermissions();
+}
+
+// Proactively ask for mic + camera so the browser prompt appears at login
+// rather than mid-call. On iOS the prompt can only fire within a user gesture
+// so this silently fails there; permissions are then requested at call-start.
+async function requestMediaPermissions() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+  try {
+    const checkPerm = async (name) => {
+      if (!navigator.permissions) return 'prompt';
+      try { return (await navigator.permissions.query({ name })).state; } catch { return 'prompt'; }
+    };
+    const [mic, cam] = await Promise.all([checkPerm('microphone'), checkPerm('camera')]);
+    if (mic === 'granted' && cam === 'granted') return;
+    await new Promise((r) => setTimeout(r, 3000));
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: mic !== 'denied',
+      video: cam !== 'denied',
+    });
+    stream.getTracks().forEach((t) => t.stop());
+  } catch { /* user declined or device absent — handled at call time */ }
 }
 
 function requestNotificationPermission() {

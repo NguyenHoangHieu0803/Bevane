@@ -12,8 +12,8 @@ export function ensureAuthenticated() {
       // Token found in storage — validate it with the server.
       api.me()
         .then((user) => {
-          // Server confirmed the token; refresh displayName in case it changed.
           state.displayName = user.displayName;
+          state.avatarUrl   = user.avatarUrl || null;
           resolve();
         })
         .catch(() => {
@@ -75,8 +75,9 @@ function showAuthScreen(resolve) {
     const btn = loginForm.querySelector('button[type="submit"]');
     btn.disabled = true; btn.textContent = 'Logging in…';
     try {
-      const { id, displayName, token } = await api.login(username, password);
-      setAuth(id, displayName, token, remember);
+      const res = await api.login(username, password);
+      setAuth(res.id, res.displayName, res.token, remember);
+      state.avatarUrl = res.avatarUrl || null;
       hide(overlay);
       resolve();
     } catch (err) {
@@ -106,8 +107,9 @@ function showAuthScreen(resolve) {
     const btn = regForm.querySelector('button[type="submit"]');
     btn.disabled = true; btn.textContent = 'Creating account…';
     try {
-      const { id, displayName, token } = await api.register(username, password, nameInput);
-      setAuth(id, displayName, token, true);
+      const res = await api.register(username, password, nameInput);
+      setAuth(res.id, res.displayName, res.token, true);
+      state.avatarUrl = res.avatarUrl || null;
       hide(overlay);
       resolve();
     } catch (err) {
