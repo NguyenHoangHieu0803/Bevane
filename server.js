@@ -75,6 +75,28 @@ function requireAuth(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// Seed accounts — stored in source so they survive DB resets on every deploy.
+// Users can change their passwords later via Profile > Change Password.
+// ---------------------------------------------------------------------------
+const SEED_ACCOUNTS = [
+  { username: 'hieu',       displayName: 'Hieu',       password: 'Bevane2025' },
+  { username: 'nhu',        displayName: 'Nhu',        password: 'Bevane2025' },
+  { username: 'benninja00', displayName: 'Benninja',   password: 'Bevane2025' },
+  { username: 'benninja83', displayName: 'Benninja83', password: 'Bevane2025' },
+];
+
+for (const { username, displayName, password } of SEED_ACCOUNTS) {
+  try {
+    if (!db.getUserByUsername(username)) {
+      db.createUserWithAuth(username, displayName, auth.hashPassword(password));
+      console.log(`[bevane] Seeded account: ${username}`);
+    }
+  } catch (e) {
+    console.error(`[bevane] Failed to seed ${username}:`, e.message);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Auth endpoints  (must come before the generic /api/* catch-all)
 // ---------------------------------------------------------------------------
 app.post('/api/auth/register', wrap((req, res) => {

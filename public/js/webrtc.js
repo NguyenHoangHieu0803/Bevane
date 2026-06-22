@@ -32,20 +32,21 @@ function setStatus(text) {
 function showOverlay(peerName, callType) {
   const ov = overlay();
   ov.classList.toggle('call-overlay--audio', callType === 'voice');
+  ov.classList.remove('call-overlay--ringing'); // reset; startCall adds it if needed
   $('#call-peer-name').textContent = peerName;
-  // Always start with sheet expanded on new call
+  // Always start with sheet expanded
   $('#call-sheet').classList.remove('collapsed');
-  const toggle = $('#call-sheet-toggle');
-  toggle.setAttribute('aria-expanded', 'true');
-  toggle.setAttribute('aria-label', 'Collapse controls');
-  // Reset self-view position
+  $('#call-sheet-toggle').setAttribute('aria-expanded', 'true');
+  $('#call-sheet-toggle').setAttribute('aria-label', 'Collapse controls');
+  // Reset self-view pip position to default CSS values
   const lv = $('#local-video');
-  lv.style.top = ''; lv.style.left = '';
-  lv.style.right = '12px'; lv.style.bottom = '';
+  lv.style.top = lv.style.left = lv.style.right = lv.style.bottom = '';
   show(ov);
 }
 function hideOverlay() {
-  hide(overlay());
+  const ov = overlay();
+  ov.classList.remove('call-overlay--ringing');
+  hide(ov);
   $('#remote-video').srcObject = null;
   $('#local-video').srcObject = null;
 }
@@ -179,6 +180,8 @@ async function startCall(peer, callType) {
     };
     attachLocal(stream);
     showOverlay(peer.displayName, callType);
+    // Show caller's own camera full-screen while waiting for pickup
+    if (callType === 'video') overlay().classList.add('call-overlay--ringing');
     setStatus('Calling…');
     setControls({ end: true, mute: true, camera: callType === 'video' });
     announceAlert(`Calling ${peer.displayName}`);
@@ -276,6 +279,7 @@ async function onIce({ callId, candidate }) {
 function onAccept({ callId }) {
   if (!call || call.id !== callId || call.role !== 'caller') return;
   call.status = 'connecting';
+  overlay().classList.remove('call-overlay--ringing'); // switch from self-view to remote
   setStatus('Connecting…');
 }
 

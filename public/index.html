@@ -500,44 +500,46 @@
                 aria-label="Collapse controls" aria-expanded="true">
           <span class="call-sheet__handle-bar"></span>
         </button>
-        <div class="call-overlay__controls" role="group" aria-label="Call controls">
-          <!-- Incoming: accept / decline -->
-          <button id="call-accept-btn"  class="callbtn callbtn--accept"  type="button" aria-label="Accept call"   hidden>
-            <span aria-hidden="true">✔</span><span class="callbtn__label">Accept</span>
-          </button>
-          <button id="call-decline-btn" class="callbtn callbtn--decline" type="button" aria-label="Decline call"  hidden>
-            <span aria-hidden="true">✖</span><span class="callbtn__label">Decline</span>
-          </button>
-          <!-- Primary in-call buttons (always shown when in call) -->
-          <button id="call-mute-btn"    class="callbtn" data-primary="true"  type="button" aria-pressed="false" aria-label="Mute microphone"  hidden>
-            <span aria-hidden="true">🎙️</span><span class="callbtn__label">Mute</span>
-          </button>
-          <button id="call-camera-btn"  class="callbtn" data-primary="true"  type="button" aria-pressed="false" aria-label="Turn camera off"   hidden>
-            <span aria-hidden="true">📷</span><span class="callbtn__label">Camera</span>
-          </button>
-          <!-- Secondary buttons (hidden when sheet is collapsed) -->
-          <button id="call-switchcam-btn"     class="callbtn" data-primary="false" type="button" aria-label="Switch camera"       hidden>
-            <span aria-hidden="true">🔄</span><span class="callbtn__label">Flip</span>
-          </button>
-          <button id="call-speaker-btn"       class="callbtn" data-primary="false" type="button" aria-label="Toggle speaker"      hidden>
-            <span aria-hidden="true">🔊</span><span class="callbtn__label">Speaker</span>
-          </button>
-          <button id="call-hold-btn"          class="callbtn" data-primary="false" type="button" aria-label="Hold call"           hidden>
-            <span aria-hidden="true">⏸️</span><span class="callbtn__label">Hold</span>
-          </button>
-          <button id="call-switchvideo-btn"   class="callbtn" data-primary="false" type="button" aria-label="Switch to video"     hidden>
-            <span aria-hidden="true">🎥</span><span class="callbtn__label">Video</span>
-          </button>
-          <button id="call-addparticipant-btn" class="callbtn" data-primary="false" type="button" aria-label="Add participant"    hidden>
-            <span aria-hidden="true">➕</span><span class="callbtn__label">Add</span>
-          </button>
-          <button id="call-pip-btn"           class="callbtn" data-primary="false" type="button" aria-label="Picture in picture"  hidden>
-            <span aria-hidden="true">🗗</span><span class="callbtn__label">PiP</span>
-          </button>
-          <!-- End call — always visible primary -->
-          <button id="call-end-btn"    class="callbtn callbtn--decline" data-primary="true"  type="button" aria-label="End call"   hidden>
-            <span aria-hidden="true">⛔</span><span class="callbtn__label">End</span>
-          </button>
+        <div class="call-sheet__body">
+          <div class="call-overlay__controls" role="group" aria-label="Call controls">
+            <!-- Incoming: accept / decline -->
+            <button id="call-accept-btn"  class="callbtn callbtn--accept"  type="button" aria-label="Accept call"   hidden>
+              <span aria-hidden="true">✔</span><span class="callbtn__label">Accept</span>
+            </button>
+            <button id="call-decline-btn" class="callbtn callbtn--decline" type="button" aria-label="Decline call"  hidden>
+              <span aria-hidden="true">✖</span><span class="callbtn__label">Decline</span>
+            </button>
+            <!-- Primary in-call buttons -->
+            <button id="call-mute-btn"    class="callbtn" type="button" aria-pressed="false" aria-label="Mute microphone"  hidden>
+              <span aria-hidden="true">🎙️</span><span class="callbtn__label">Mute</span>
+            </button>
+            <button id="call-camera-btn"  class="callbtn" type="button" aria-pressed="false" aria-label="Turn camera off"   hidden>
+              <span aria-hidden="true">📷</span><span class="callbtn__label">Camera</span>
+            </button>
+            <!-- Secondary buttons -->
+            <button id="call-switchcam-btn"      class="callbtn" type="button" aria-label="Switch camera"    hidden>
+              <span aria-hidden="true">🔄</span><span class="callbtn__label">Flip</span>
+            </button>
+            <button id="call-speaker-btn"        class="callbtn" type="button" aria-label="Toggle speaker"   hidden>
+              <span aria-hidden="true">🔊</span><span class="callbtn__label">Speaker</span>
+            </button>
+            <button id="call-hold-btn"           class="callbtn" type="button" aria-label="Hold call"        hidden>
+              <span aria-hidden="true">⏸️</span><span class="callbtn__label">Hold</span>
+            </button>
+            <button id="call-switchvideo-btn"    class="callbtn" type="button" aria-label="Switch to video"  hidden>
+              <span aria-hidden="true">🎥</span><span class="callbtn__label">Video</span>
+            </button>
+            <button id="call-addparticipant-btn" class="callbtn" type="button" aria-label="Add participant"  hidden>
+              <span aria-hidden="true">➕</span><span class="callbtn__label">Add</span>
+            </button>
+            <button id="call-pip-btn"            class="callbtn" type="button" aria-label="Picture in picture" hidden>
+              <span aria-hidden="true">🗗</span><span class="callbtn__label">PiP</span>
+            </button>
+            <!-- End call -->
+            <button id="call-end-btn" class="callbtn callbtn--decline" type="button" aria-label="End call" hidden>
+              <span aria-hidden="true">⛔</span><span class="callbtn__label">End</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
