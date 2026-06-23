@@ -1,7 +1,7 @@
 // Profile tab: avatar (real upload), display name (editable via API),
 // Change password, My QR, Log out.
 
-import { state, setIdentity, clearAuth, emit } from './state.js';
+import { state, setIdentity, clearAuth } from './state.js';
 import { api, ApiError } from './api.js';
 import { $, el, clear, show, hide, toast, announce, announceAlert, comingSoon } from './ui.js';
 import { toCanvas } from './vendor/qrcode.js';
@@ -159,189 +159,6 @@ function resizeImageToDataUrl(file, w, h, quality) {
   });
 }
 
-// ----------------------------------------------------------------- Chat wallpaper editor
-let _wpImg = null, _wpX = 0, _wpY = 0, _wpScale = 1;
-let _wpDrag = false, _wpLX = 0, _wpLY = 0;
-let _wpPinchD = null, _wpPinchS = null;
-
-function _wpVp() { return document.getElementById('wpeditor-viewport'); }
-
-function _wpApply() {
-  const img = document.getElementById('wpeditor-img');
-  const iw = _wpImg.naturalWidth * _wpScale;
-  const ih = _wpImg.naturalHeight * _wpScale;
-  img.style.left   = _wpX + 'px';
-  img.style.top    = _wpY + 'px';
-  img.style.width  = iw + 'px';
-  img.style.height = ih + 'px';
-}
-
-function _wpSetScale(newScale, pivotX, pivotY) {
-  const vp = _wpVp();
-  if (pivotX === undefined) { pivotX = vp.offsetWidth / 2; pivotY = vp.offsetHeight / 2; }
-  const clamped = Math.max(0.05, Math.min(20, newScale));
-  const f = clamped / _wpScale;
-  _wpX = pivotX - f * (pivotX - _wpX);
-  _wpY = pivotY - f * (pivotY - _wpY);
-  _wpScale = clamped;
-  _wpApply();
-  document.getElementById('wpeditor-slider').value = Math.round(_wpScale * 100);
-}
-
-function _wpContain() {
-  const vp = _wpVp();
-  const vw = vp.offsetWidth, vh = vp.offsetHeight;
-  const iw = _wpImg.naturalWidth, ih = _wpImg.naturalHeight;
-  _wpScale = Math.min(vw / iw, vh / ih);
-  _wpX = (vw - iw * _wpScale) / 2;
-  _wpY = (vh - ih * _wpScale) / 2;
-  _wpApply();
-  document.getElementById('wpeditor-slider').value = Math.round(_wpScale * 100);
-}
-
-function _openWpEditorWithSrc(src) {
-  const editor = document.getElementById('wallpaper-editor');
-  const img    = document.getElementById('wpeditor-img');
-  _wpImg = new Image();
-  _wpImg.onload = () => {
-    img.src = src;
-    editor.hidden = false;
-    // Wait one frame so the viewport has its final layout dimensions
-    requestAnimationFrame(() => _wpContain());
-  };
-  _wpImg.src = src;
-}
-
-function openWallpaperPicker() {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*'; input.style.display = 'none';
-  document.body.appendChild(input);
-  input.addEventListener('change', () => {
-    document.body.removeChild(input);
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => _openWpEditorWithSrc(e.target.result);
-    reader.readAsDataURL(file);
-  });
-  input.click();
-}
-
-async function clearWallpaper() {
-  const btn = $('#profile-wallpaper-clear-btn');
-  btn.disabled = true;
-  try {
-    await api.updateProfile(undefined, undefined, '');
-    state.wallpaperUrl = null;
-    renderProfile();
-    toast('Wallpaper removed.');
-  } catch (err) {
-    toast('Could not remove wallpaper.');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function _wpSave() {
-  const vp = _wpVp();
-  const vw = vp.offsetWidth, vh = vp.offsetHeight;
-  const outW = Math.min(vw, 900), outH = Math.round(vh * (outW / vw));
-  const sc   = outW / vw;
-  const canvas = document.createElement('canvas');
-  canvas.width = outW; canvas.height = outH;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, outW, outH);
-  ctx.save();
-  ctx.scale(sc, sc);
-  ctx.drawImage(_wpImg, _wpX, _wpY, _wpImg.naturalWidth * _wpScale, _wpImg.naturalHeight * _wpScale);
-  ctx.restore();
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
-  document.getElementById('wallpaper-editor').hidden = true;
-  const btn = $('#profile-wallpaper-btn');
-  btn.disabled = true; btn.textContent = 'Đang lưu…';
-  try {
-    await api.updateProfile(undefined, undefined, dataUrl);
-    state.wallpaperUrl = dataUrl;
-    renderProfile();
-    toast('Đã cập nhật hình nền chat.');
-  } catch (err) {
-    toast(err instanceof ApiError ? err.message : 'Không lưu được hình nền.');
-  } finally {
-    btn.disabled = false; btn.textContent = '🖼️ Set chat wallpaper';
-  }
-}
-
-function initWpEditor() {
-  const vp = _wpVp();
-
-  // Mouse drag
-  vp.addEventListener('mousedown', (e) => { _wpDrag = true; _wpLX = e.clientX; _wpLY = e.clientY; vp.classList.add('dragging'); });
-  window.addEventListener('mousemove', (e) => {
-    if (!_wpDrag) return;
-    _wpX += e.clientX - _wpLX; _wpY += e.clientY - _wpLY;
-    _wpLX = e.clientX; _wpLY = e.clientY;
-    _wpApply();
-  });
-  window.addEventListener('mouseup', () => { _wpDrag = false; vp.classList.remove('dragging'); });
-
-  // Scroll to zoom
-  vp.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const r = vp.getBoundingClientRect();
-    _wpSetScale(_wpScale * (e.deltaY > 0 ? 0.9 : 1.1), e.clientX - r.left, e.clientY - r.top);
-  }, { passive: false });
-
-  // Touch drag + pinch zoom
-  vp.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    if (e.touches.length === 1) {
-      _wpDrag = true; _wpPinchD = null;
-      _wpLX = e.touches[0].clientX; _wpLY = e.touches[0].clientY;
-    } else if (e.touches.length === 2) {
-      _wpDrag = false;
-      _wpPinchD = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      _wpPinchS = _wpScale;
-    }
-  }, { passive: false });
-
-  vp.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    if (e.touches.length === 1 && _wpDrag) {
-      _wpX += e.touches[0].clientX - _wpLX; _wpY += e.touches[0].clientY - _wpLY;
-      _wpLX = e.touches[0].clientX; _wpLY = e.touches[0].clientY;
-      _wpApply();
-    } else if (e.touches.length === 2 && _wpPinchD) {
-      const d  = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      const r  = vp.getBoundingClientRect();
-      _wpSetScale(_wpPinchS * (d / _wpPinchD), cx - r.left, cy - r.top);
-    }
-  }, { passive: false });
-
-  vp.addEventListener('touchend', (e) => {
-    if (e.touches.length < 2) _wpPinchD = null;
-    if (e.touches.length === 0) { _wpDrag = false; vp.classList.remove('dragging'); }
-  });
-
-  // Controls
-  document.getElementById('wpeditor-slider').addEventListener('input', (e) => _wpSetScale(Number(e.target.value) / 100));
-  document.getElementById('wpeditor-zoom-in').addEventListener('click',  () => _wpSetScale(_wpScale * 1.25));
-  document.getElementById('wpeditor-zoom-out').addEventListener('click', () => _wpSetScale(_wpScale / 1.25));
-  document.getElementById('wpeditor-reset').addEventListener('click',    () => _wpContain());
-  document.getElementById('wpeditor-cancel').addEventListener('click',   () => { document.getElementById('wallpaper-editor').hidden = true; });
-  document.getElementById('wpeditor-done').addEventListener('click',     () => _wpSave());
-
-  // Close on Escape
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !document.getElementById('wallpaper-editor').hidden) {
-      document.getElementById('wallpaper-editor').hidden = true;
-    }
-  });
-}
-
 // ----------------------------------------------------------------- Change password
 function openChangePassword() {
   $('#changepw-current').value = '';
@@ -388,7 +205,6 @@ async function logout() {
 // ----------------------------------------------------------------- wiring
 export function initProfile() {
   renderProfile();
-  initWpEditor();
 
   $('#profile-qr-btn').addEventListener('click', openQr);
   $('#qr-close').addEventListener('click', closeQr);
@@ -400,9 +216,6 @@ export function initProfile() {
   $('#editname-dialog').addEventListener('keydown', (e) => { if (e.key === 'Escape') closeEditName(); });
 
   $('#profile-avatar-btn').addEventListener('click', openAvatarPicker);
-
-  $('#profile-wallpaper-btn').addEventListener('click', openWallpaperPicker);
-  $('#profile-wallpaper-clear-btn').addEventListener('click', clearWallpaper);
 
   $('#profile-password-btn').addEventListener('click', openChangePassword);
   $('#changepw-form').addEventListener('submit', submitChangePassword);

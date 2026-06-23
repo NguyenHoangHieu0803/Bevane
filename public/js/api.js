@@ -40,7 +40,9 @@ export const api = {
   login:    (username, password) => request('POST', '/api/auth/login',    { username, password }),
   logout:   ()                   => request('POST', '/api/auth/logout'),
   me:             ()                              => request('GET',   '/api/auth/me'),
-  updateProfile:  (displayName, avatarUrl, wallpaperUrl) => request('PATCH', '/api/profile', { displayName, avatarUrl, wallpaperUrl }),
+  updateProfile:  (displayName, avatarUrl) => request('PATCH', '/api/profile', { displayName, avatarUrl }),
+  setConversationWallpaper: (conversationId, wallpaperUrl) =>
+    request('PATCH', `/api/conversations/${encodeURIComponent(conversationId)}/wallpaper`, { wallpaperUrl }),
   changePassword: (currentPassword, newPassword)  => request('POST',  '/api/auth/change-password', { currentPassword, newPassword }),
 
   // Users

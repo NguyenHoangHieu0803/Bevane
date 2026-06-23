@@ -321,21 +321,34 @@ button { font: inherit; cursor: pointer; }
   flex-direction: column;
   gap: 8px;
 }
+/* -------------------- Conversation avatar -------------------- */
+.conv-avatar {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  overflow: hidden; display: flex; align-items: center; justify-content: center;
+  background: var(--primary); color: var(--primary-ink);
+  font-weight: 700; font-size: .9rem;
+}
+.conv-avatar--initials { /* text initials — no extra style needed */ }
+
 .conversation-item, .note-item, .call-item, .peer-item {
   width: 100%;
   text-align: left;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 10px 14px;
   color: var(--text);
   min-height: var(--tap);
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
   animation: listItemIn .15s ease backwards;
   transition: background .15s, border-color .15s;
-  flex-direction: column;
-  gap: 4px;
 }
+/* note/call/peer items keep column layout */
+.note-item, .call-item, .peer-item { flex-direction: column; gap: 4px; }
+.conversation-item__body { display: flex; flex-direction: column; gap: 4px; flex: 1 1 auto; min-width: 0; }
 .conversation-item:hover, .note-item:hover, .call-item:hover, .peer-item:hover {
   background: var(--surface-2);
   border-color: var(--primary);
@@ -373,8 +386,15 @@ button { font: inherit; cursor: pointer; }
   background: var(--surface);
   flex: 0 0 auto;
 }
-.thread-header__name { font-weight: 700; }
-.thread-header__actions { margin-left: auto; display: flex; gap: 6px; }
+.thread-header__avatar {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  background: var(--primary) center/cover no-repeat;
+  color: var(--primary-ink); font-weight: 700; font-size: .85rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.thread-header__info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.thread-header__name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thread-header__actions { margin-left: auto; display: flex; gap: 6px; flex-shrink: 0; }
 .thread-header__actions .iconbtn { width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
 
 .message-list {

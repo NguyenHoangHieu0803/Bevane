@@ -157,6 +157,7 @@ async function init() {
   await addColumnIfMissing('messages', 'reply_to',   'TEXT');
   await addColumnIfMissing('messages', 'deleted',    'INTEGER NOT NULL DEFAULT 0');
   await addColumnIfMissing('messages', 'reactions',  'TEXT');
+  await addColumnIfMissing('conversations', 'wallpaper_url', 'TEXT');
 }
 
 // ---------------------------------------------------------------------------
@@ -176,7 +177,13 @@ function mapUser(row) {
 
 function mapConversation(row) {
   if (!row) return null;
-  return { id: row.id, userA: row.user_a, userB: row.user_b, createdAt: Number(row.created_at) };
+  return {
+    id:           row.id,
+    userA:        row.user_a,
+    userB:        row.user_b,
+    createdAt:    Number(row.created_at),
+    wallpaperUrl: row.wallpaper_url || null,
+  };
 }
 
 function parseJson(value, fallback) {
@@ -359,6 +366,14 @@ async function getConversation(id) {
   return mapConversation(await get(`SELECT * FROM conversations WHERE id = ?`, [id]));
 }
 
+async function setConversationWallpaper(id, url) {
+  await run(
+    `UPDATE conversations SET wallpaper_url = @url WHERE id = @id`,
+    { url: url || null, id }
+  );
+  return getConversation(id);
+}
+
 async function listConversationsForUser(userId) {
   const rows = await all(
     `SELECT * FROM conversations WHERE user_a = ? OR user_b = ?`, [userId, userId]
@@ -373,10 +388,11 @@ async function listConversationsForUser(userId) {
     );
     const last = mapMessage(lastRow);
     return {
-      id:       conv.id,
-      peer:     peer
-        ? { id: peer.id, displayName: peer.displayName, wallpaperUrl: peer.wallpaperUrl }
-        : { id: peerId, displayName: '(unknown)', wallpaperUrl: null },
+      id:           conv.id,
+      wallpaperUrl: conv.wallpaperUrl,
+      peer:         peer
+        ? { id: peer.id, displayName: peer.displayName, avatarUrl: peer.avatarUrl }
+        : { id: peerId, displayName: '(unknown)', avatarUrl: null },
       lastMessage: last
         ? { body: last.body, createdAt: last.createdAt, senderId: last.senderId }
         : null,
@@ -639,6 +655,7 @@ module.exports = {
   // conversations
   getOrCreateConversation,
   getConversation,
+  setConversationWallpaper,
   listConversationsForUser,
   // messages
   createMessage,

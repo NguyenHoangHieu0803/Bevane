@@ -10,6 +10,7 @@ import {
 } from './ui.js';
 import { openMessageActions, renderServerReactions } from './reactions.js';
 import { buildTonePicker, translateText, summarizeChat, showAiResult } from './ai-tools.js';
+import { initWpEditor, openWallpaperPicker } from './wallpaper.js';
 
 let messageNodes = new Map(); // messageId -> li node
 let tempNodes = new Map();     // clientTempId -> li node
@@ -35,6 +36,7 @@ export async function loadConversations() {
 
 function renderConversationItem(c) {
   const online = c.peer.online;
+  const initials = (c.peer.displayName || '?').slice(0, 2).toUpperCase();
   const presence = el('span', {
     class: `presence ${online ? 'presence--online' : 'presence--offline'}`,
   }, [
@@ -46,29 +48,51 @@ function renderConversationItem(c) {
     ? `${c.lastMessage.senderId === state.userId ? 'You: ' : ''}${c.lastMessage.body}`
     : 'No messages yet';
 
+  const avatar = c.peer.avatarUrl
+    ? el('span', { class: 'conv-avatar' }, [
+        Object.assign(new Image(), { src: c.peer.avatarUrl, alt: '', style: 'width:100%;height:100%;object-fit:cover;border-radius:50%' }),
+      ])
+    : el('span', { class: 'conv-avatar conv-avatar--initials', text: initials });
+
   return el('li', {}, [
     el('button', {
       class: `conversation-item${c.id === state.activeConversationId ? ' conversation-item--active' : ''}`,
       type: 'button',
       'data-cid': c.id,
       'aria-label': `Open conversation with ${c.peer.displayName}, ${online ? 'online' : 'offline'}`,
-      onclick: () => openThread(c.id, c.peer),
+      onclick: () => openThread(c.id, c.peer, c.wallpaperUrl),
     }, [
-      el('span', { class: 'conversation-item__top' }, [
-        el('span', { class: 'conversation-item__name', text: c.peer.displayName }),
-        presence,
+      avatar,
+      el('span', { class: 'conversation-item__body' }, [
+        el('span', { class: 'conversation-item__top' }, [
+          el('span', { class: 'conversation-item__name', text: c.peer.displayName }),
+          presence,
+        ]),
+        el('span', { class: 'conversation-item__preview', text: preview }),
       ]),
-      el('span', { class: 'conversation-item__preview', text: preview }),
     ]),
   ]);
 }
 
 // ----------------------------------------------------------------- thread
-export async function openThread(conversationId, peer) {
+export async function openThread(conversationId, peer, wallpaperUrl = null) {
   state.activeConversationId = conversationId;
   state.activePeer = peer;
+  state.activeConversationWallpaperUrl = wallpaperUrl;
   messageNodes = new Map();
   tempNodes = new Map();
+
+  // Thread header — peer avatar
+  const avatarEl = $('#thread-peer-avatar');
+  if (peer.avatarUrl) {
+    avatarEl.style.backgroundImage = `url(${JSON.stringify(peer.avatarUrl)})`;
+    avatarEl.textContent = '';
+    avatarEl.classList.remove('thread-header__avatar--initials');
+  } else {
+    avatarEl.style.backgroundImage = '';
+    avatarEl.textContent = (peer.displayName || '?').slice(0, 2).toUpperCase();
+    avatarEl.classList.add('thread-header__avatar--initials');
+  }
 
   $('#thread-peer-name').textContent = peer.displayName;
   updatePresenceLabel(peer.online);
@@ -84,10 +108,12 @@ export async function openThread(conversationId, peer) {
   $('#message-search').hidden = true;
   emit('thread:open', { conversationId, peer });
 
+  // Show/hide wallpaper clear button based on whether this conversation has a wallpaper
+  $('#thread-wallpaper-clear-btn').hidden = !wallpaperUrl;
+
   const listEl = $('#message-list');
   clear(listEl);
-  // Peer's wallpaper takes priority; fall back to own wallpaper so whoever set it both see it.
-  applyWallpaper(listEl, peer?.wallpaperUrl || state.wallpaperUrl || null);
+  applyWallpaper(listEl, wallpaperUrl);
   try {
     const messages = await api.listMessages(conversationId, { limit: 50 });
     for (const m of messages) appendMessage(m);
@@ -332,19 +358,17 @@ function applyWallpaper(listEl, url) {
 }
 
 export function initChats() {
-  // Wallpaper changes (from profile)
-  // Wallpaper broadcast: apply to the active chat regardless of who changed it,
-  // and update own state so "reopen" fallback works.
-  on('wallpaper_changed', ({ userId, wallpaperUrl }) => {
+  // Wallpaper editor (single modal, wired once here)
+  initWpEditor();
+
+  // Per-conversation wallpaper broadcast from server
+  on('wallpaper_changed', ({ conversationId, wallpaperUrl }) => {
     const url = wallpaperUrl || null;
-    // Track own wallpaper so openThread fallback works after a reload
-    if (userId === state.userId) state.wallpaperUrl = url;
-    // Update active peer's cached wallpaperUrl
-    if (state.activePeer && state.activePeer.id === userId) {
-      state.activePeer = { ...state.activePeer, wallpaperUrl: url };
+    if (conversationId === state.activeConversationId) {
+      state.activeConversationWallpaperUrl = url;
+      applyWallpaper($('#message-list'), url);
+      $('#thread-wallpaper-clear-btn').hidden = !url;
     }
-    // Always apply to the visible chat background
-    if (state.activeConversationId) applyWallpaper($('#message-list'), url);
   });
 
   // New conversation -> open peer picker
@@ -371,9 +395,28 @@ export function initChats() {
   $('#smart-reply-btn').addEventListener('click', requestSmartReplies);
   $('#thread-gennote-btn').addEventListener('click', generateNoteFromConversation);
 
-  $('#thread-voice-btn').addEventListener('click', () => {
-    if (state.activePeer) emit('call:start', { peer: state.activePeer, callType: 'voice' });
+  // Wallpaper buttons in thread header
+  $('#thread-wallpaper-btn').addEventListener('click', () => {
+    if (!state.activeConversationId) return;
+    openWallpaperPicker(async (dataUrl) => {
+      try {
+        await api.setConversationWallpaper(state.activeConversationId, dataUrl);
+        // The server broadcasts wallpaper_changed so both users update automatically
+      } catch (e) {
+        toast('Could not save wallpaper.');
+      }
+    });
   });
+  $('#thread-wallpaper-clear-btn').addEventListener('click', async () => {
+    if (!state.activeConversationId) return;
+    try {
+      await api.setConversationWallpaper(state.activeConversationId, null);
+    } catch (e) {
+      toast('Could not remove wallpaper.');
+    }
+  });
+
+  // Video call (always video — voice-only is removed)
   $('#thread-video-btn').addEventListener('click', () => {
     if (state.activePeer) emit('call:start', { peer: state.activePeer, callType: 'video' });
   });

@@ -35,9 +35,9 @@ function overlay() { return $('#call-overlay'); }
 function setStatus(text) {
   $('#call-status-text').textContent = text;
 }
-function showOverlay(peerName, callType) {
+function showOverlay(peerName) {
   const ov = overlay();
-  ov.classList.toggle('call-overlay--audio', callType === 'voice');
+  ov.classList.remove('call-overlay--audio'); // always video
   ov.classList.remove('call-overlay--ringing'); // reset; startCall adds it if needed
   $('#call-peer-name').textContent = peerName;
   // Always start with sheet expanded
@@ -122,17 +122,24 @@ function setControls({ accept, decline, mute, camera, end }) {
 }
 
 // ---------------------------------------------------------------- media
-async function getMedia(callType) {
-  const constraints = callType === 'video'
-    ? { audio: true, video: { facingMode: 'user' } }
-    : { audio: true, video: false };
-  return navigator.mediaDevices.getUserMedia(constraints);
+async function getMedia() {
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'user' } });
+  } catch (err) {
+    // No camera or camera denied — fallback to audio-only; remote video still works
+    if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError' || err.name === 'NotReadableError') {
+      return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    }
+    throw err;
+  }
 }
 
 function attachLocal(stream) {
   call.localStream = stream;
   const lv = $('#local-video');
-  if (call.callType === 'video') { lv.srcObject = stream; lv.play?.().catch(() => {}); }
+  const hasVideo = stream.getVideoTracks().length > 0;
+  if (hasVideo) { lv.srcObject = stream; lv.play?.().catch(() => {}); }
+  // No camera → local-video stays black; remote video still works
 }
 
 // ---------------------------------------------------------------- peer connection
@@ -179,14 +186,14 @@ function buildPeerConnection() {
 async function startCall(peer, callType) {
   if (call) { toast('Already in a call.'); return; }
   try {
-    const stream = await getMedia(callType);
+    const stream = await getMedia();
     call = {
-      id: uuid(), peerId: peer.id, peerName: peer.displayName, callType,
+      id: uuid(), peerId: peer.id, peerName: peer.displayName, callType: 'video',
       role: 'caller', status: 'ringing', startedAt: Date.now(), logged: false,
       pendingCandidates: [], // buffer callee's ICE until setRemoteDescription
     };
     attachLocal(stream);
-    showOverlay(peer.displayName, callType);
+    showOverlay(peer.displayName);
     // Show caller's own camera full-screen while waiting for pickup
     if (callType === 'video') overlay().classList.add('call-overlay--ringing');
     setStatus('Calling…');
@@ -218,7 +225,7 @@ function onIncoming({ callId, from, fromName, callType }) {
     pendingOffer: null,
     pendingCandidates: [], // buffer caller's ICE until we build PC + applyOffer
   };
-  showOverlay(call.peerName, callType);
+  showOverlay(call.peerName);
   setStatus(`Incoming ${callType} call`);
   setControls({ accept: true, decline: true });
   announceAlert(`Incoming ${callType} call from ${call.peerName}. Accept or decline.`);
@@ -227,7 +234,7 @@ function onIncoming({ callId, from, fromName, callType }) {
 async function acceptCall() {
   if (!call || call.role !== 'callee') return;
   try {
-    const stream = await getMedia(call.callType);
+    const stream = await getMedia();
     attachLocal(stream);
     call.status = 'connecting';
     setStatus('Connecting…');

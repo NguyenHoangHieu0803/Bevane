@@ -165,14 +165,20 @@
         <!-- Single thread -->
         <div id="thread-pane" class="pane thread-pane" hidden>
           <div class="thread-header">
-            <span id="thread-peer-name" class="thread-header__name"></span>
-            <span id="thread-peer-presence" class="presence" aria-live="polite"></span>
+            <span id="thread-peer-avatar" class="thread-header__avatar" aria-hidden="true"></span>
+            <span class="thread-header__info">
+              <span id="thread-peer-name" class="thread-header__name"></span>
+              <span id="thread-peer-presence" class="presence" aria-live="polite"></span>
+            </span>
             <span class="thread-header__actions">
+              <button id="thread-wallpaper-btn" class="iconbtn" type="button" aria-label="Set chat wallpaper" title="Set wallpaper">
+                <span aria-hidden="true">🖼️</span>
+              </button>
+              <button id="thread-wallpaper-clear-btn" class="iconbtn" type="button" aria-label="Remove chat wallpaper" title="Remove wallpaper" hidden>
+                <span aria-hidden="true">🗑️</span>
+              </button>
               <button id="thread-search-btn" class="iconbtn" type="button" aria-label="Search messages in this conversation">
                 <span aria-hidden="true">🔍</span>
-              </button>
-              <button id="thread-voice-btn" class="iconbtn" type="button" aria-label="Start voice call">
-                <span aria-hidden="true">📞</span>
               </button>
               <button id="thread-video-btn" class="iconbtn" type="button" aria-label="Start video call">
                 <span aria-hidden="true">🎥</span>
@@ -350,8 +356,6 @@
 
           <div class="profile-section">
             <h3 class="profile-section__title">Chat appearance</h3>
-            <button id="profile-wallpaper-btn" class="profile-row" type="button">🖼️ Set chat wallpaper</button>
-            <button id="profile-wallpaper-clear-btn" class="profile-row" type="button" hidden>🗑️ Remove wallpaper</button>
           </div>
 
           <div class="profile-section">

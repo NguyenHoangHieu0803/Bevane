@@ -121,7 +121,7 @@ app.get('/api/auth/me', wrap(async (req, res) => {
 app.patch('/api/profile', wrap(async (req, res) => {
   const session = await requireAuth(req, res);
   if (!session) return;
-  const { displayName, avatarUrl, wallpaperUrl } = req.body || {};
+  const { displayName, avatarUrl } = req.body || {};
   const updates = {};
 
   if (displayName != null) {
@@ -137,21 +137,27 @@ app.patch('/api/profile', wrap(async (req, res) => {
       return err(res, 400, 'avatar_too_large', 'Avatar image is too large.');
     updates.avatarUrl = avatarUrl || null;
   }
-  if (wallpaperUrl != null) {
-    if (wallpaperUrl !== '' && !String(wallpaperUrl).startsWith('data:image/'))
-      return err(res, 400, 'invalid_wallpaper', 'Wallpaper must be an image data URL.');
-    if (String(wallpaperUrl).length > 800000)
-      return err(res, 400, 'wallpaper_too_large', 'Wallpaper image is too large (max ~600 KB).');
-    updates.wallpaperUrl = wallpaperUrl || null;
-  }
 
   const updated = await db.updateUser(session.userId, updates);
-  res.json({ id: updated.id, displayName: updated.displayName, avatarUrl: updated.avatarUrl, wallpaperUrl: updated.wallpaperUrl });
+  res.json({ id: updated.id, displayName: updated.displayName, avatarUrl: updated.avatarUrl });
+}));
 
-  // Broadcast wallpaper change to all connected clients so the other person sees it live.
-  if (wallpaperUrl != null) {
-    broadcast({ type: 'wallpaper_changed', userId: session.userId, wallpaperUrl: updated.wallpaperUrl });
-  }
+// Per-conversation wallpaper — any participant can set or clear it.
+app.patch('/api/conversations/:id/wallpaper', wrap(async (req, res) => {
+  const session = await requireAuth(req, res);
+  if (!session) return;
+  const conv = await db.getConversation(req.params.id);
+  if (!conv) return err(res, 404, 'not_found', 'Conversation not found.');
+  if (conv.userA !== session.userId && conv.userB !== session.userId)
+    return err(res, 403, 'forbidden', 'Not a participant.');
+  const { wallpaperUrl } = req.body || {};
+  if (wallpaperUrl && !String(wallpaperUrl).startsWith('data:image/'))
+    return err(res, 400, 'invalid_wallpaper', 'Wallpaper must be an image data URL.');
+  if (wallpaperUrl && String(wallpaperUrl).length > 800000)
+    return err(res, 400, 'wallpaper_too_large', 'Wallpaper image is too large (max ~600 KB).');
+  const updated = await db.setConversationWallpaper(conv.id, wallpaperUrl || null);
+  broadcast({ type: 'wallpaper_changed', conversationId: conv.id, wallpaperUrl: updated.wallpaperUrl });
+  res.json({ conversationId: conv.id, wallpaperUrl: updated.wallpaperUrl });
 }));
 
 app.post('/api/auth/change-password', wrap(async (req, res) => {
