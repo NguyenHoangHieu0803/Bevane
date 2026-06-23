@@ -22,7 +22,7 @@ const auth = require('./src/auth');
 const { attachWebSocketServer, isOnline } = require('./src/ws');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
