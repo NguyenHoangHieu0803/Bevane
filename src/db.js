@@ -130,10 +130,11 @@ function addColumnIfMissing(table, column, definition) {
   }
 }
 
-// Users: username, password_hash, and avatar_url for account-based auth.
+// Users: username, password_hash, avatar_url, and wallpaper_url.
 addColumnIfMissing('users', 'username', 'TEXT');
 addColumnIfMissing('users', 'password_hash', 'TEXT');
 addColumnIfMissing('users', 'avatar_url', 'TEXT');
+addColumnIfMissing('users', 'wallpaper_url', 'TEXT');
 // Partial unique index: two accounts cannot share a username, but legacy
 // anonymous rows (username IS NULL) are excluded from the constraint.
 try {
@@ -164,6 +165,7 @@ function mapUser(row) {
     id: row.id,
     displayName: row.display_name,
     avatarUrl: row.avatar_url || null,
+    wallpaperUrl: row.wallpaper_url || null,
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
   };
@@ -270,16 +272,18 @@ function touchUser(id, ts = now()) {
 
 const stmtUpdateUserFields = db.prepare(
   `UPDATE users
-      SET display_name = CASE WHEN @displayName IS NOT NULL THEN @displayName ELSE display_name END,
-          avatar_url   = CASE WHEN @avatarUrl   IS NOT NULL THEN @avatarUrl   ELSE avatar_url   END
+      SET display_name  = CASE WHEN @displayName  IS NOT NULL THEN @displayName  ELSE display_name  END,
+          avatar_url    = CASE WHEN @avatarUrl    IS NOT NULL THEN @avatarUrl    ELSE avatar_url    END,
+          wallpaper_url = CASE WHEN @wallpaperUrl IS NOT NULL THEN @wallpaperUrl ELSE wallpaper_url END
     WHERE id = @id`
 );
 
-function updateUser(id, { displayName, avatarUrl } = {}) {
+function updateUser(id, { displayName, avatarUrl, wallpaperUrl } = {}) {
   stmtUpdateUserFields.run({
     id,
-    displayName: displayName != null ? String(displayName).trim() : null,
-    avatarUrl:   avatarUrl   != null ? avatarUrl : null,
+    displayName:  displayName  != null ? String(displayName).trim() : null,
+    avatarUrl:    avatarUrl    != null ? avatarUrl    : null,
+    wallpaperUrl: wallpaperUrl != null ? wallpaperUrl : null,
   });
   return mapUser(stmtGetUser.get(id));
 }

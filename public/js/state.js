@@ -11,6 +11,7 @@ export const state = {
   userId:               null,
   displayName:          null,
   avatarUrl:            null,
+  wallpaperUrl:         null,
   token:                null,
   activeConversationId: null,
   activePeer:           null,
@@ -36,6 +37,7 @@ export function clearAuth() {
   state.userId               = null;
   state.displayName          = null;
   state.avatarUrl            = null;
+  state.wallpaperUrl         = null;
   state.token                = null;
   state.activeConversationId = null;
   state.activePeer           = null;

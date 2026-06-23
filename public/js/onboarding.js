@@ -12,8 +12,9 @@ export function ensureAuthenticated() {
       // Token found in storage — validate it with the server.
       api.me()
         .then((user) => {
-          state.displayName = user.displayName;
-          state.avatarUrl   = user.avatarUrl || null;
+          state.displayName  = user.displayName;
+          state.avatarUrl    = user.avatarUrl    || null;
+          state.wallpaperUrl = user.wallpaperUrl || null;
           resolve();
         })
         .catch(() => {
@@ -77,7 +78,8 @@ function showAuthScreen(resolve) {
     try {
       const res = await api.login(username, password);
       setAuth(res.id, res.displayName, res.token, remember);
-      state.avatarUrl = res.avatarUrl || null;
+      state.avatarUrl    = res.avatarUrl    || null;
+      state.wallpaperUrl = res.wallpaperUrl || null;
       hide(overlay);
       resolve();
     } catch (err) {
@@ -109,7 +111,8 @@ function showAuthScreen(resolve) {
     try {
       const res = await api.register(username, password, nameInput);
       setAuth(res.id, res.displayName, res.token, true);
-      state.avatarUrl = res.avatarUrl || null;
+      state.avatarUrl    = res.avatarUrl    || null;
+      state.wallpaperUrl = res.wallpaperUrl || null;
       hide(overlay);
       resolve();
     } catch (err) {

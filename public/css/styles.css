@@ -3,27 +3,66 @@
    Color contrast targets WCAG 2.1 AA (>= 4.5:1 normal text).
    ============================================================ */
 
+/* ---- Dark-mint theme (default) ---- */
 :root {
-  --bg: #0b1220;
-  --surface: #141c2e;
-  --surface-2: #1d273d;
-  --border: #2c3a55;
-  --text: #f2f5fb;          /* on --bg: ~16:1 */
-  --text-muted: #b9c4da;    /* on --bg: ~8:1  */
-  --primary: #4f8cff;       /* accents */
-  --primary-ink: #07142e;   /* text on primary buttons: dark on light blue */
-  --accent: #2ea043;        /* online / success */
+  --bg: #071a18;
+  --surface: #0e2825;
+  --surface-2: #163530;
+  --border: #1e4842;
+  --text: #d4f5ef;
+  --text-muted: #7bbfb5;
+  --primary: #00c9a7;
+  --primary-ink: #003329;
+  --accent: #00e5c0;
   --danger: #ff5d5d;
   --warning: #ffb020;
-  --bubble-me: #2f6df0;     /* my message bubble */
+  --bubble-me: #00a884;
   --bubble-me-text: #ffffff;
-  --bubble-them: #26324b;
-  --bubble-them-text: #f2f5fb;
-  --focus: #ffd166;         /* high-contrast focus ring */
+  --bubble-them: #163530;
+  --bubble-them-text: #d4f5ef;
+  --focus: #00e5c0;
   --radius: 14px;
-  --tap: 44px;              /* minimum touch target */
+  --tap: 44px;
   --header-h: 52px;
   --tabbar-h: 60px;
+}
+
+/* ---- Light-mint theme ---- */
+html.theme-light {
+  --bg: #c8f0e8;
+  --surface: #e5f9f4;
+  --surface-2: #b5e9df;
+  --border: #78cfc0;
+  --text: #0a2e28;
+  --text-muted: #2e7a6e;
+  --primary: #00897b;
+  --primary-ink: #ffffff;
+  --accent: #00c9a7;
+  --danger: #e53935;
+  --warning: #f57c00;
+  --bubble-me: #00897b;
+  --bubble-me-text: #ffffff;
+  --bubble-them: #a8e0d5;
+  --bubble-them-text: #0a2e28;
+  --focus: #00897b;
+}
+
+/* ---- Animations ---- */
+@keyframes msgSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes listItemIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(.92); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 * { box-sizing: border-box; }
@@ -292,8 +331,14 @@ button { font: inherit; cursor: pointer; }
   color: var(--text);
   min-height: var(--tap);
   display: flex;
+  animation: listItemIn .15s ease backwards;
+  transition: background .15s, border-color .15s;
   flex-direction: column;
   gap: 4px;
+}
+.conversation-item:hover, .note-item:hover, .call-item:hover, .peer-item:hover {
+  background: var(--surface-2);
+  border-color: var(--primary);
 }
 /* Open conversation highlight (visible in desktop/tablet two-pane). */
 .conversation-item--active {
@@ -341,6 +386,21 @@ button { font: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 8px;
+  background-size: cover;
+  background-position: center;
+  transition: background-color .3s;
+}
+/* Translucent bubbles when wallpaper is set */
+.message-list.has-wallpaper .message--me {
+  background: rgba(0, 136, 100, 0.88);
+}
+.message-list.has-wallpaper .message--them {
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+}
+html.theme-light .message-list.has-wallpaper .message--them {
+  background: rgba(255,255,255, 0.72);
+  color: var(--text);
 }
 .message {
   max-width: 78%;
@@ -348,6 +408,7 @@ button { font: inherit; cursor: pointer; }
   border-radius: 16px;
   word-wrap: break-word;
   white-space: pre-wrap;
+  animation: msgSlideIn .18s ease backwards;
 }
 .message--them {
   align-self: flex-start;
@@ -1006,22 +1067,50 @@ button { font: inherit; cursor: pointer; }
   box-shadow: inset 3px 0 0 var(--primary);
   font-weight: 800;
 }
+.sidebar__footer {
+  display: flex; flex-direction: column; gap: 6px; margin-top: auto;
+}
+.sidebar__theme-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; min-height: 36px;
+  border: none; background: none; cursor: pointer;
+  color: var(--text-muted); font-size: 1.1rem; border-radius: var(--radius);
+  transition: background .15s, color .15s;
+}
+.sidebar__theme-btn:hover { background: var(--surface-2); color: var(--text); }
 .sidebar__me {
   display: flex; align-items: center; gap: 10px;
   width: 100%;
   min-height: var(--tap);
   padding: 8px 10px;
-  margin-top: auto;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text);
   text-align: left;
+  transition: background .15s, border-color .15s;
 }
-.sidebar__me-avatar { color: var(--accent); font-size: .9rem; }
+.sidebar__me:hover { background: var(--surface); border-color: var(--primary); }
+.sidebar__me-avatar {
+  width: 32px; height: 32px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--primary-ink);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 700;
+  overflow: hidden;
+}
+.sidebar__me-avatar img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+}
 .sidebar__me-name {
   font-weight: 700; font-size: .9rem;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Theme toggle in mobile header */
+.app-header__theme {
+  width: 36px; height: 36px; min-width: 36px; font-size: 1rem; flex-shrink: 0;
 }
 
 /* Cap readable content widths on very wide screens so lines stay comfortable. */
@@ -1041,7 +1130,11 @@ button { font: inherit; cursor: pointer; }
   .sidenav { justify-content: center; padding: 12px 0; }
   .sidenav__label { display: none; }
   .sidebar__brand { justify-content: center; padding: 6px 0 14px; }
-  .sidebar__me { justify-content: center; }
+  .sidebar__me { justify-content: center; padding: 8px; }
+  /* Hide theme label on icon rail */
+  .sidebar__theme-btn { min-height: 40px; }
+  /* On mobile, hide the desktop theme toggle (use mobile header one) */
+  .app-header__theme { display: flex; }
 
   /* Bottom tab bar is replaced by the sidebar at this width. */
   .tabbar { display: none; }
@@ -1069,6 +1162,11 @@ button { font: inherit; cursor: pointer; }
   }
   /* When a thread IS open, hide the empty state; the list stays visible. */
   #view-chats.has-thread .thread-empty { display: none; }
+}
+
+/* Hide mobile header theme toggle when sidebar is visible */
+@media (min-width: 768px) {
+  .app-header__theme { display: none; }
 }
 
 /* -------------------- Desktop: >= 1024px -------------------- */

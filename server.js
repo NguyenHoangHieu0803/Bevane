@@ -149,13 +149,13 @@ app.get('/api/auth/me', wrap((req, res) => {
   if (!session) return;
   const user = db.getUser(session.userId);
   if (!user) return err(res, 401, 'user_not_found', 'User no longer exists.');
-  res.json({ id: user.id, displayName: user.displayName, avatarUrl: user.avatarUrl });
+  res.json({ id: user.id, displayName: user.displayName, avatarUrl: user.avatarUrl, wallpaperUrl: user.wallpaperUrl });
 }));
 
 app.patch('/api/profile', wrap((req, res) => {
   const session = requireAuth(req, res);
   if (!session) return;
-  const { displayName, avatarUrl } = req.body || {};
+  const { displayName, avatarUrl, wallpaperUrl } = req.body || {};
   const updates = {};
   if (displayName != null) {
     const dn = String(displayName).trim();
@@ -173,8 +173,17 @@ app.patch('/api/profile', wrap((req, res) => {
     }
     updates.avatarUrl = avatarUrl || null;
   }
+  if (wallpaperUrl != null) {
+    if (wallpaperUrl !== '' && !String(wallpaperUrl).startsWith('data:image/')) {
+      return err(res, 400, 'invalid_wallpaper', 'Wallpaper must be an image data URL.');
+    }
+    if (String(wallpaperUrl).length > 800000) {
+      return err(res, 400, 'wallpaper_too_large', 'Wallpaper image is too large (max ~600 KB).');
+    }
+    updates.wallpaperUrl = wallpaperUrl || null;
+  }
   const updated = db.updateUser(session.userId, updates);
-  res.json({ id: updated.id, displayName: updated.displayName, avatarUrl: updated.avatarUrl });
+  res.json({ id: updated.id, displayName: updated.displayName, avatarUrl: updated.avatarUrl, wallpaperUrl: updated.wallpaperUrl });
 }));
 
 app.post('/api/auth/change-password', wrap((req, res) => {
@@ -545,6 +554,17 @@ server.listen(PORT, HOST, () => {
   console.log(`[bevane] WebSocket endpoint: ws://<host>:${PORT}/ws`);
   console.log(`[bevane] SQLite DB: ${db.DB_PATH}`);
   console.log(`[bevane] Serving static frontend from: ${PUBLIC_DIR}`);
+
+  // Prevent Render free tier from sleeping — ping ourselves every 14 min.
+  // Render's RENDER_EXTERNAL_URL is set automatically for all web services.
+  const renderUrl = process.env.RENDER_EXTERNAL_URL;
+  if (renderUrl) {
+    const pingUrl = `${renderUrl}/api/users`;
+    setInterval(() => {
+      fetch(pingUrl, { signal: AbortSignal.timeout(10000) }).catch(() => {});
+    }, 14 * 60 * 1000);
+    console.log(`[bevane] Keep-alive ping scheduled → ${pingUrl}`);
+  }
 });
 
 module.exports = { app, server };

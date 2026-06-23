@@ -117,10 +117,15 @@
           </button>
         </li>
       </ul>
-      <button class="sidebar__me" id="side-me" type="button" data-view="profile" aria-label="Open your profile">
-        <span class="sidebar__me-avatar" aria-hidden="true">●</span>
-        <span id="side-self-name" class="sidebar__me-name"></span>
-      </button>
+      <div class="sidebar__footer">
+        <button id="theme-toggle-btn" class="sidebar__theme-btn" type="button" aria-label="Toggle theme">
+          <span id="theme-icon" aria-hidden="true">☀️</span>
+        </button>
+        <button class="sidebar__me" id="side-me" type="button" data-view="profile" aria-label="Open your profile">
+          <span class="sidebar__me-avatar" id="side-avatar" aria-hidden="true"></span>
+          <span id="side-self-name" class="sidebar__me-name"></span>
+        </button>
+      </div>
     </nav>
 
     <!-- ---------- Content column (header + main + mobile tab bar) ---------- -->
@@ -130,6 +135,9 @@
         <span aria-hidden="true">‹</span>
       </button>
       <h1 id="view-title" class="app-header__title">Chats</h1>
+      <button id="theme-toggle-mobile" class="iconbtn app-header__theme" type="button" aria-label="Toggle theme">
+        <span id="theme-icon-mobile" aria-hidden="true">☀️</span>
+      </button>
       <span id="self-name" class="app-header__self" aria-label="Your display name"></span>
     </header>
 
@@ -339,6 +347,12 @@
             <li><button id="profile-editname-btn" class="profile-row" type="button">✏️ Edit display name</button></li>
             <li><button id="profile-password-btn" class="profile-row" type="button">🔑 Change password</button></li>
           </ul>
+
+          <div class="profile-section">
+            <h3 class="profile-section__title">Chat appearance</h3>
+            <button id="profile-wallpaper-btn" class="profile-row" type="button">🖼️ Set chat wallpaper</button>
+            <button id="profile-wallpaper-clear-btn" class="profile-row" type="button" hidden>🗑️ Remove wallpaper</button>
+          </div>
 
           <div class="profile-section">
             <h3 class="profile-section__title">Notification settings</h3>

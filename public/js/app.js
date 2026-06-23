@@ -106,9 +106,33 @@ function initNav() {
   });
 }
 
+// --------------------------------------------------------------- theme
+const THEME_KEY = 'bevane.theme';
+
+function applyTheme(theme) {
+  document.documentElement.classList.toggle('theme-light', theme === 'light');
+  const icon  = theme === 'light' ? '🌙' : '☀️';
+  const label = theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
+  for (const el of document.querySelectorAll('#theme-icon, #theme-icon-mobile')) el.textContent = icon;
+  for (const el of document.querySelectorAll('#theme-toggle-btn, #theme-toggle-mobile')) el.setAttribute('aria-label', label);
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY) || 'dark';
+  applyTheme(saved);
+  const toggle = () => {
+    const next = document.documentElement.classList.contains('theme-light') ? 'dark' : 'light';
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  };
+  document.getElementById('theme-toggle-btn')?.addEventListener('click', toggle);
+  document.getElementById('theme-toggle-mobile')?.addEventListener('click', toggle);
+}
+
 // --------------------------------------------------------------- boot
 async function boot() {
   registerServiceWorker();
+  initTheme();
   // Hide the splash before showing any interactive UI. The splash z-index (800)
   // is above the onboarding form (500), so without this the splash permanently
   // blocks new users from registering. (BUG-CRITICAL-001)

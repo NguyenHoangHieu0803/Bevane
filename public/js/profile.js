@@ -1,7 +1,7 @@
 // Profile tab: avatar (real upload), display name (editable via API),
 // Change password, My QR, Log out.
 
-import { state, setIdentity, clearAuth } from './state.js';
+import { state, setIdentity, clearAuth, emit } from './state.js';
 import { api, ApiError } from './api.js';
 import { $, el, clear, show, hide, toast, announce, announceAlert, comingSoon } from './ui.js';
 import { toCanvas } from './vendor/qrcode.js';
@@ -12,8 +12,8 @@ function initials(name) {
 }
 
 function renderProfile() {
+  // Main profile avatar
   const avatarEl = $('#profile-avatar');
-  // Clear previous content
   while (avatarEl.firstChild) avatarEl.removeChild(avatarEl.firstChild);
   if (state.avatarUrl) {
     const img = document.createElement('img');
@@ -25,6 +25,24 @@ function renderProfile() {
     avatarEl.textContent = initials(state.displayName);
   }
   $('#profile-display-name').textContent = state.displayName || '—';
+
+  // Sidebar mini-avatar (#side-avatar)
+  const sideAvatar = $('#side-avatar');
+  if (sideAvatar) {
+    while (sideAvatar.firstChild) sideAvatar.removeChild(sideAvatar.firstChild);
+    if (state.avatarUrl) {
+      const img = document.createElement('img');
+      img.src = state.avatarUrl;
+      img.alt = '';
+      sideAvatar.appendChild(img);
+    } else {
+      sideAvatar.textContent = initials(state.displayName);
+    }
+  }
+
+  // Wallpaper clear button visibility
+  const clearBtn = $('#profile-wallpaper-clear-btn');
+  if (clearBtn) clearBtn.hidden = !state.wallpaperUrl;
 }
 
 // ----------------------------------------------------------------- My QR
@@ -136,6 +154,51 @@ function resizeImageToDataUrl(file, w, h, quality) {
   });
 }
 
+// ----------------------------------------------------------------- Chat wallpaper
+function openWallpaperPicker() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.addEventListener('change', async () => {
+    document.body.removeChild(input);
+    const file = input.files[0];
+    if (!file) return;
+    const btn = $('#profile-wallpaper-btn');
+    btn.disabled = true; btn.textContent = 'Uploading…';
+    try {
+      const dataUrl = await resizeImageToDataUrl(file, 800, 1422, 0.78);
+      await api.updateProfile(undefined, undefined, dataUrl);
+      state.wallpaperUrl = dataUrl;
+      emit('wallpaper:changed', { url: dataUrl });
+      renderProfile();
+      toast('Chat wallpaper updated.');
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'Could not update wallpaper.');
+    } finally {
+      btn.disabled = false; btn.textContent = '🖼️ Set chat wallpaper';
+    }
+  });
+  input.click();
+}
+
+async function clearWallpaper() {
+  const btn = $('#profile-wallpaper-clear-btn');
+  btn.disabled = true;
+  try {
+    await api.updateProfile(undefined, undefined, '');
+    state.wallpaperUrl = null;
+    emit('wallpaper:changed', { url: null });
+    renderProfile();
+    toast('Wallpaper removed.');
+  } catch (err) {
+    toast('Could not remove wallpaper.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // ----------------------------------------------------------------- Change password
 function openChangePassword() {
   $('#changepw-current').value = '';
@@ -193,6 +256,9 @@ export function initProfile() {
   $('#editname-dialog').addEventListener('keydown', (e) => { if (e.key === 'Escape') closeEditName(); });
 
   $('#profile-avatar-btn').addEventListener('click', openAvatarPicker);
+
+  $('#profile-wallpaper-btn').addEventListener('click', openWallpaperPicker);
+  $('#profile-wallpaper-clear-btn').addEventListener('click', clearWallpaper);
 
   $('#profile-password-btn').addEventListener('click', openChangePassword);
   $('#changepw-form').addEventListener('submit', submitChangePassword);
