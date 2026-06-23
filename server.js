@@ -53,12 +53,7 @@ async function requireAuth(req, res) {
 // ---------------------------------------------------------------------------
 // Seed accounts — survive DB resets; users can change passwords via Profile.
 // ---------------------------------------------------------------------------
-const SEED_ACCOUNTS = [
-  { username: 'hieu',       displayName: 'Hieu',       password: 'Bevane2025' },
-  { username: 'nhu',        displayName: 'Nhu',        password: 'Bevane2025' },
-  { username: 'benninja00', displayName: 'Benninja',   password: 'Bevane2025' },
-  { username: 'benninja83', displayName: 'Benninja83', password: 'Bevane2025' },
-];
+const SEED_ACCOUNTS = [];
 
 async function seedAccounts() {
   for (const { username, displayName, password } of SEED_ACCOUNTS) {

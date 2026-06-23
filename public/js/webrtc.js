@@ -9,7 +9,13 @@ import { send as wsSend } from './ws.js';
 import { $, show, hide, announce, announceAlert, toast, comingSoon, uuid } from './ui.js';
 
 const RTC_CONFIG = {
-  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+  iceServers: [
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
+    // Free TURN relay — helps when both sides are behind symmetric NAT
+    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  ],
 };
 
 // Call state machine.
@@ -177,6 +183,7 @@ async function startCall(peer, callType) {
     call = {
       id: uuid(), peerId: peer.id, peerName: peer.displayName, callType,
       role: 'caller', status: 'ringing', startedAt: Date.now(), logged: false,
+      pendingCandidates: [], // buffer callee's ICE until setRemoteDescription
     };
     attachLocal(stream);
     showOverlay(peer.displayName, callType);
@@ -209,6 +216,7 @@ function onIncoming({ callId, from, fromName, callType }) {
     id: callId, peerId: from, peerName: fromName || 'Caller', callType,
     role: 'callee', status: 'incoming', startedAt: Date.now(), logged: false,
     pendingOffer: null,
+    pendingCandidates: [], // buffer caller's ICE until we build PC + applyOffer
   };
   showOverlay(call.peerName, callType);
   setStatus(`Incoming ${callType} call`);
@@ -229,8 +237,15 @@ async function acceptCall() {
     wsSend({ type: 'call:accept', callId: call.id, from: state.userId, to: call.peerId });
 
     if (call.pendingOffer) {
-      await applyOffer(call.pendingOffer);
+      const offer = call.pendingOffer;
       call.pendingOffer = null;
+      await applyOffer(offer);
+      // Drain ICE candidates that arrived before the PC was ready
+      const buffered = call.pendingCandidates || [];
+      call.pendingCandidates = [];
+      for (const c of buffered) {
+        try { await call.pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_) {}
+      }
     }
   } catch (err) {
     toast(mediaError(err));
@@ -268,12 +283,24 @@ async function onAnswer({ callId, sdp }) {
   await call.pc.setRemoteDescription(new RTCSessionDescription(sdp));
   call.status = 'connecting';
   setStatus('Connecting…');
+  // Drain any callee ICE candidates that arrived before the answer
+  const buffered = call.pendingCandidates || [];
+  call.pendingCandidates = [];
+  for (const c of buffered) {
+    try { await call.pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_) {}
+  }
 }
 
 async function onIce({ callId, candidate }) {
-  if (!call || call.id !== callId || !call.pc) return;
+  if (!call || call.id !== callId) return;
+  // Buffer until the PC exists AND remote description is set (so addIceCandidate works)
+  if (!call.pc || !call.pc.remoteDescription) {
+    call.pendingCandidates = call.pendingCandidates || [];
+    call.pendingCandidates.push(candidate);
+    return;
+  }
   try { await call.pc.addIceCandidate(new RTCIceCandidate(candidate)); }
-  catch (e) { /* ignore late candidates */ }
+  catch (_) { /* ignore late/duplicate candidates */ }
 }
 
 function onAccept({ callId }) {
