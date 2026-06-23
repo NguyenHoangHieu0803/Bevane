@@ -86,7 +86,7 @@ export async function openThread(conversationId, peer) {
 
   const listEl = $('#message-list');
   clear(listEl);
-  applyWallpaper(listEl, state.wallpaperUrl);
+  applyWallpaper(listEl, peer?.wallpaperUrl || null);
   try {
     const messages = await api.listMessages(conversationId, { limit: 50 });
     for (const m of messages) appendMessage(m);
@@ -332,7 +332,13 @@ function applyWallpaper(listEl, url) {
 
 export function initChats() {
   // Wallpaper changes (from profile)
-  on('wallpaper:changed', ({ url }) => applyWallpaper($('#message-list'), url));
+  // Wallpaper broadcast from server: update background if the active peer changed it.
+  on('wallpaper_changed', ({ userId, wallpaperUrl }) => {
+    if (state.activePeer && state.activePeer.id === userId) {
+      applyWallpaper($('#message-list'), wallpaperUrl || null);
+      state.activePeer = { ...state.activePeer, wallpaperUrl: wallpaperUrl || null };
+    }
+  });
 
   // New conversation -> open peer picker
   $('#new-chat-btn').addEventListener('click', () => emit('peerpicker:open', { intent: 'chat' }));

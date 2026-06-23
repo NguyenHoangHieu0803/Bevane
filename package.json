@@ -8,6 +8,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
     "express": "^4.21.2",
     "localtunnel": "^2.0.2",
     "qrcode": "^1.5.4",

@@ -141,11 +141,16 @@ function resizeImageToDataUrl(file, w, h, quality) {
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext('2d');
-        // Center-crop to square then scale
-        const size = Math.min(img.naturalWidth, img.naturalHeight);
-        const sx = (img.naturalWidth  - size) / 2;
-        const sy = (img.naturalHeight - size) / 2;
-        ctx.drawImage(img, sx, sy, size, size, 0, 0, w, h);
+        // Cover: maintain aspect ratio, crop center to fit target dimensions (no distortion).
+        const srcAspect = img.naturalWidth / img.naturalHeight;
+        const dstAspect = w / h;
+        let sw, sh, sx = 0, sy = 0;
+        if (srcAspect > dstAspect) {
+          sh = img.naturalHeight; sw = sh * dstAspect; sx = (img.naturalWidth - sw) / 2;
+        } else {
+          sw = img.naturalWidth; sh = sw / dstAspect; sy = (img.naturalHeight - sh) / 2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
         resolve(canvas.toDataURL('image/jpeg', quality));
       };
       img.src = e.target.result;
