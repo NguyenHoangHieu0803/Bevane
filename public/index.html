@@ -211,11 +211,35 @@
             </button>
           </div>
 
+          <!-- Attach popover -->
+          <div id="attach-menu" class="attach-menu" hidden role="menu">
+            <button class="attach-menu__item" id="attach-image-btn" type="button" role="menuitem">
+              <span aria-hidden="true">🖼️</span> Hình ảnh
+            </button>
+            <button class="attach-menu__item" id="attach-file-btn" type="button" role="menuitem">
+              <span aria-hidden="true">📄</span> Tệp đính kèm
+            </button>
+          </div>
+          <input id="media-image-input" type="file" accept="image/*" hidden aria-hidden="true" />
+          <input id="media-file-input"  type="file" hidden aria-hidden="true" />
+
           <form id="message-form" class="message-form">
             <label for="message-input" class="visually-hidden">Type a message</label>
-            <button id="attach-btn" class="iconbtn" type="button" aria-label="Attach media">
+
+            <!-- Attach button -->
+            <button id="attach-btn" class="iconbtn" type="button" aria-label="Attach image or file" aria-haspopup="true" aria-expanded="false">
               <span aria-hidden="true">＋</span>
             </button>
+
+            <!-- Voice recording mode (replaces text input while recording) -->
+            <div id="voice-bar" class="voice-bar" hidden aria-live="polite">
+              <span class="voice-bar__dot" aria-hidden="true"></span>
+              <span class="voice-bar__label">Recording</span>
+              <span id="voice-timer" class="voice-bar__timer">0:00</span>
+              <button id="voice-cancel-btn" class="iconbtn" type="button" aria-label="Cancel recording">✕</button>
+              <button id="voice-send-btn" class="iconbtn iconbtn--accent" type="button" aria-label="Send voice message">➤</button>
+            </div>
+
             <button id="tone-btn" class="iconbtn" type="button" aria-label="Adjust tone with AI">
               <span aria-hidden="true">🎚️</span>
             </button>
@@ -229,6 +253,9 @@
               autocomplete="off"
               placeholder="Message…"
               aria-label="Message text" />
+            <button id="voice-btn" class="iconbtn" type="button" aria-label="Record voice message">
+              <span aria-hidden="true">🎤</span>
+            </button>
             <button id="message-send" class="iconbtn iconbtn--accent" type="submit" aria-label="Send message">
               <span aria-hidden="true">➤</span>
             </button>
@@ -565,6 +592,11 @@
 
   <!-- ===================== Toast ===================== -->
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- ===================== Image Lightbox ===================== -->
+  <div id="img-lightbox" hidden role="dialog" aria-modal="true" aria-label="Full-size image">
+    <img id="img-lightbox-img" src="" alt="Full size" />
+  </div>
 
   <!-- ===================== Wallpaper Editor ===================== -->
   <div id="wallpaper-editor" hidden role="dialog" aria-modal="true" aria-label="Adjust wallpaper">

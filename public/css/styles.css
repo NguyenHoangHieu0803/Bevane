@@ -480,8 +480,78 @@ html.theme-light .message-list.has-wallpaper .message--them {
   border-top: 1px solid var(--border);
   background: var(--surface);
   flex: 0 0 auto;
+  position: relative; /* for attach-menu positioning */
 }
 .message-form input { flex: 1; }
+
+/* -------------------- Attach menu -------------------- */
+.attach-menu {
+  position: absolute;
+  bottom: calc(100% + 6px); left: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  z-index: 20;
+  min-width: 160px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+}
+.attach-menu__item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 13px 16px;
+  background: none; border: none; border-bottom: 1px solid var(--border);
+  color: var(--text); cursor: pointer; font-size: .95rem; text-align: left;
+}
+.attach-menu__item:last-child { border-bottom: none; }
+.attach-menu__item:hover { background: var(--surface-2); }
+
+/* -------------------- Voice recording bar -------------------- */
+.voice-bar {
+  display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;
+}
+.voice-bar__dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  background: #e74c3c; animation: vpulse 1s ease-in-out infinite;
+}
+@keyframes vpulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+.voice-bar__label { color: #e74c3c; font-weight: 600; font-size: .9rem; white-space: nowrap; }
+.voice-bar__timer { font-variant-numeric: tabular-nums; font-size: .9rem; color: var(--text-muted); }
+
+/* -------------------- Media message bubbles -------------------- */
+.message__img {
+  display: block;
+  max-width: min(280px, 100%);
+  max-height: 320px;
+  border-radius: 10px;
+  object-fit: cover;
+  cursor: zoom-in;
+}
+.message__file {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0,0,0,.12);
+  color: inherit; text-decoration: none;
+  font-size: .88rem; max-width: 260px; word-break: break-all;
+}
+.message__file-icon { font-size: 1.4rem; flex-shrink: 0; }
+.message__file-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.message__file-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.message__file-size { font-size: .78rem; opacity: .75; }
+.message__audio {
+  display: block; max-width: 260px; width: 100%;
+  border-radius: 8px; margin: 2px 0;
+}
+
+/* Lightbox overlay for full-size image view */
+#img-lightbox {
+  position: fixed; inset: 0; z-index: 980;
+  background: rgba(0,0,0,.92);
+  display: flex; align-items: center; justify-content: center;
+  cursor: zoom-out;
+}
+#img-lightbox[hidden] { display: none; }
+#img-lightbox img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 8px; }
 
 /* -------------------- Notes -------------------- */
 .note-editor form { display: flex; flex-direction: column; gap: 8px; }

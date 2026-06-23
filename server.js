@@ -10,7 +10,7 @@ const auth = require('./src/auth');
 const { attachWebSocketServer, isOnline, broadcast } = require('./src/ws');
 
 const app = express();
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '22mb' })); // 15 MB image → ~20 MB base64
 
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
@@ -264,6 +264,36 @@ app.post('/api/conversations/:id/messages', wrap(async (req, res) => {
   const text = (body || '').trim();
   if (!text) return err(res, 400, 'empty_body', 'Message body is empty.');
   const msg = await db.createMessage(conv.id, senderId, text, 'sent');
+  res.status(201).json(msg);
+}));
+
+// Media messages (image / file / voice) — requires auth, size-limited per type.
+const MEDIA_MAX = { image: 20_000_000, file: 7_000_000, voice: 2_500_000 };
+app.post('/api/conversations/:id/media', wrap(async (req, res) => {
+  const session = await requireAuth(req, res);
+  if (!session) return;
+  const conv = await db.getConversation(req.params.id);
+  if (!conv) return err(res, 404, 'not_found', 'Conversation not found.');
+  if (conv.userA !== session.userId && conv.userB !== session.userId)
+    return err(res, 403, 'forbidden', 'Not a participant.');
+
+  const { body, mediaType, filename, clientTempId } = req.body || {};
+  if (!body || !mediaType) return err(res, 400, 'missing_params', 'body and mediaType are required.');
+  if (!MEDIA_MAX[mediaType]) return err(res, 400, 'invalid_media_type', 'mediaType must be image, file, or voice.');
+  if (body.length > MEDIA_MAX[mediaType])
+    return err(res, 400, 'media_too_large', `${mediaType} exceeds the size limit.`);
+
+  const peerId = conv.userA === session.userId ? conv.userB : conv.userA;
+  const msg = await db.createMessage(conv.id, session.userId, body, 'sent', mediaType, filename || null);
+
+  const { sendToUser } = require('./src/ws');
+  sendToUser(session.userId, { type: 'chat:new', message: msg, clientTempId: clientTempId || null });
+  const delivered = sendToUser(peerId, { type: 'chat:new', message: msg });
+  if (delivered) {
+    const updated = await db.setMessageStatus(msg.id, 'delivered');
+    sendToUser(session.userId, { type: 'chat:status', messageId: msg.id, status: 'delivered' });
+    msg.status = 'delivered';
+  }
   res.status(201).json(msg);
 }));
 

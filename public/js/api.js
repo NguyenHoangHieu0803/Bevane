@@ -43,6 +43,8 @@ export const api = {
   updateProfile:  (displayName, avatarUrl) => request('PATCH', '/api/profile', { displayName, avatarUrl }),
   setConversationWallpaper: (conversationId, wallpaperUrl) =>
     request('PATCH', `/api/conversations/${encodeURIComponent(conversationId)}/wallpaper`, { wallpaperUrl }),
+  sendMedia: (conversationId, { body, mediaType, filename, clientTempId }) =>
+    request('POST', `/api/conversations/${encodeURIComponent(conversationId)}/media`, { body, mediaType, filename, clientTempId }),
   changePassword: (currentPassword, newPassword)  => request('POST',  '/api/auth/change-password', { currentPassword, newPassword }),
 
   // Users

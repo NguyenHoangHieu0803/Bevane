@@ -11,6 +11,7 @@ import {
 import { openMessageActions, renderServerReactions } from './reactions.js';
 import { buildTonePicker, translateText, summarizeChat, showAiResult } from './ai-tools.js';
 import { initWpEditor, openWallpaperPicker } from './wallpaper.js';
+import { ApiError } from './api.js';
 
 let messageNodes = new Map(); // messageId -> li node
 let tempNodes = new Map();     // clientTempId -> li node
@@ -158,6 +159,63 @@ function statusLabel(status) {
   return 'Sent';
 }
 
+function buildMediaNode(m) {
+  if (m.deleted) return el('span', { class: 'message__body', text: 'Message deleted' });
+  if (!m.mediaType) return el('span', { class: 'message__body', text: m.body || '' });
+
+  if (m.mediaType === 'image') {
+    const img = document.createElement('img');
+    img.src = m.body; img.alt = m.filename || 'Image';
+    img.className = 'message__img'; img.loading = 'lazy';
+    img.addEventListener('click', () => openLightbox(m.body));
+    return img;
+  }
+  if (m.mediaType === 'file') {
+    const sizeKb = m.body ? Math.round(m.body.length * 0.75 / 1024) : 0;
+    const sizeLabel = sizeKb > 1024 ? `${(sizeKb/1024).toFixed(1)} MB` : `${sizeKb} KB`;
+    const a = document.createElement('a');
+    a.href = m.body; a.download = m.filename || 'file';
+    a.className = 'message__file';
+    a.innerHTML = `<span class="message__file-icon">📄</span>
+      <span class="message__file-info">
+        <span class="message__file-name">${escHtml(m.filename || 'File')}</span>
+        <span class="message__file-size">${sizeLabel}</span>
+      </span>`;
+    a.addEventListener('click', (e) => { e.preventDefault(); downloadFromDataUrl(m.body, m.filename); });
+    return a;
+  }
+  if (m.mediaType === 'voice') {
+    const audio = document.createElement('audio');
+    audio.src = m.body; audio.controls = true; audio.className = 'message__audio';
+    audio.preload = 'metadata';
+    return audio;
+  }
+  return el('span', { class: 'message__body', text: m.body || '' });
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function downloadFromDataUrl(dataUrl, filename) {
+  const a = document.createElement('a');
+  a.href = dataUrl; a.download = filename || 'file';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function openLightbox(src) {
+  const lb = document.getElementById('img-lightbox');
+  document.getElementById('img-lightbox-img').src = src;
+  lb.hidden = false;
+  lb.focus?.();
+}
+
+function closeLightbox() {
+  const lb = document.getElementById('img-lightbox');
+  lb.hidden = true;
+  document.getElementById('img-lightbox-img').src = '';
+}
+
 function appendMessage(m, clientTempId) {
   if (deletedLocally.has(m.id)) return null;
   const mine = m.senderId === state.userId;
@@ -169,14 +227,12 @@ function appendMessage(m, clientTempId) {
   }
 
   const children = [];
-  // Reply quote (client-only this round; replyTo round-trips as null on server)
   if (m.replyTo && typeof m.replyTo === 'object' && m.replyTo.body) {
     children.push(el('span', { class: 'message__quote', text: `↩︎ ${m.replyTo.body}` }));
   }
-  children.push(el('span', { class: 'message__body', text: m.deleted ? 'Message deleted' : m.body }));
+  children.push(buildMediaNode(m));
   children.push(meta);
 
-  // Per-message action button (react / reply / delete). Real handler -> no dead button.
   const actionBtn = el('button', {
     class: 'message__menu-btn', type: 'button',
     'aria-label': 'Message actions: react, reply, delete',
@@ -350,6 +406,161 @@ function notifyMessage(body, senderName, conversationId) {
   n.onclick = () => { window.focus(); n.close(); };
 }
 
+// ----------------------------------------------------------------- media sending
+async function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const maxPx = 1920;
+      const scale = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * scale);
+      const h = Math.round(img.naturalHeight * scale);
+      const cvs = document.createElement('canvas');
+      cvs.width = w; cvs.height = h;
+      cvs.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve({ dataUrl: cvs.toDataURL('image/jpeg', 0.82), filename: file.name });
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+async function readAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function sendMediaMessage(mediaType, dataUrl, filename) {
+  if (!state.activeConversationId) return;
+  const clientTempId = uuid();
+  // Optimistic bubble (image shows preview; file/voice shows placeholder)
+  const optimistic = {
+    id: `temp-${clientTempId}`,
+    senderId: state.userId,
+    body: dataUrl,
+    mediaType,
+    filename: filename || null,
+    status: 'sent',
+    createdAt: Date.now(),
+  };
+  const node = appendMessage(optimistic);
+  if (node) { tempNodes.set(clientTempId, node); scrollMessages(); }
+
+  try {
+    await api.sendMedia(state.activeConversationId, { body: dataUrl, mediaType, filename, clientTempId });
+    // Server broadcasts chat:new which reconciles the temp bubble
+  } catch (e) {
+    if (node) node.remove();
+    tempNodes.delete(clientTempId);
+    toast(e instanceof ApiError ? e.message : 'Could not send media.');
+  }
+}
+
+// Image picker
+async function pickAndSendImage() {
+  const input = document.getElementById('media-image-input');
+  input.value = '';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const MB15 = 15 * 1024 * 1024;
+    if (file.size > MB15) { toast('Image must be under 15 MB.'); return; }
+    try {
+      const { dataUrl, filename } = await compressImage(file);
+      await sendMediaMessage('image', dataUrl, filename);
+    } catch { toast('Could not process image.'); }
+  };
+  input.click();
+}
+
+// File picker
+async function pickAndSendFile() {
+  const input = document.getElementById('media-file-input');
+  input.value = '';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const MB5 = 5 * 1024 * 1024;
+    if (file.size > MB5) { toast('File must be under 5 MB.'); return; }
+    try {
+      const dataUrl = await readAsDataUrl(file);
+      await sendMediaMessage('file', dataUrl, file.name);
+    } catch { toast('Could not read file.'); }
+  };
+  input.click();
+}
+
+// Voice recorder
+let _recorder = null, _recChunks = [], _recTimer = null, _recSeconds = 0;
+
+async function startVoiceRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _recChunks = []; _recSeconds = 0;
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus' : 'audio/webm';
+    _recorder = new MediaRecorder(stream, { mimeType });
+    _recorder.ondataavailable = (e) => { if (e.data.size > 0) _recChunks.push(e.data); };
+    _recorder.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(_recChunks, { type: mimeType });
+      const dataUrl = await readAsDataUrl(blob);
+      showVoiceBar(false);
+      await sendMediaMessage('voice', dataUrl, 'voice.webm');
+    };
+    _recorder.start(200);
+    showVoiceBar(true);
+    // Timer update
+    _recTimer = setInterval(() => {
+      _recSeconds++;
+      const m = Math.floor(_recSeconds / 60), s = _recSeconds % 60;
+      document.getElementById('voice-timer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+      if (_recSeconds >= 60) stopVoiceRecording(true); // auto-stop at 1 minute
+    }, 1000);
+  } catch {
+    toast('Microphone permission denied.');
+  }
+}
+
+function stopVoiceRecording(send = true) {
+  clearInterval(_recTimer); _recTimer = null;
+  if (_recorder && _recorder.state !== 'inactive') {
+    if (send) {
+      _recorder.stop(); // triggers onstop → sends
+    } else {
+      _recorder.onstop = () => { _recorder.stream?.getTracks().forEach((t) => t.stop()); };
+      _recorder.stop();
+      showVoiceBar(false);
+    }
+  }
+  _recorder = null;
+}
+
+function showVoiceBar(visible) {
+  const vb = document.getElementById('voice-bar');
+  const input = document.getElementById('message-input');
+  const tone = document.getElementById('tone-btn');
+  const smart = document.getElementById('smart-reply-btn');
+  const voiceBtn = document.getElementById('voice-btn');
+  const sendBtn = document.getElementById('message-send');
+  vb.hidden = !visible;
+  input.hidden = visible;
+  tone.hidden = visible;
+  smart.hidden = visible;
+  voiceBtn.hidden = visible;
+  sendBtn.hidden = visible;
+  if (!visible) {
+    document.getElementById('voice-timer').textContent = '0:00';
+    _recSeconds = 0;
+  }
+}
+
 // ----------------------------------------------------------------- wiring
 function applyWallpaper(listEl, url) {
   if (!listEl) return;
@@ -370,6 +581,27 @@ export function initChats() {
       $('#thread-wallpaper-clear-btn').hidden = !url;
     }
   });
+
+  // Lightbox close
+  document.getElementById('img-lightbox').addEventListener('click', closeLightbox);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+
+  // Attach menu toggle
+  const attachMenu = document.getElementById('attach-menu');
+  document.getElementById('attach-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = !attachMenu.hidden;
+    attachMenu.hidden = open;
+    e.currentTarget.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => { attachMenu.hidden = true; });
+  document.getElementById('attach-image-btn').addEventListener('click', () => { attachMenu.hidden = true; pickAndSendImage(); });
+  document.getElementById('attach-file-btn').addEventListener('click',  () => { attachMenu.hidden = true; pickAndSendFile(); });
+
+  // Voice recording
+  document.getElementById('voice-btn').addEventListener('click', () => startVoiceRecording());
+  document.getElementById('voice-cancel-btn').addEventListener('click', () => stopVoiceRecording(false));
+  document.getElementById('voice-send-btn').addEventListener('click', () => stopVoiceRecording(true));
 
   // New conversation -> open peer picker
   $('#new-chat-btn').addEventListener('click', () => emit('peerpicker:open', { intent: 'chat' }));

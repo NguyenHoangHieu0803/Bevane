@@ -157,6 +157,8 @@ async function init() {
   await addColumnIfMissing('messages', 'reply_to',   'TEXT');
   await addColumnIfMissing('messages', 'deleted',    'INTEGER NOT NULL DEFAULT 0');
   await addColumnIfMissing('messages', 'reactions',  'TEXT');
+  await addColumnIfMissing('messages', 'media_type', 'TEXT');
+  await addColumnIfMissing('messages', 'filename',   'TEXT');
   await addColumnIfMissing('conversations', 'wallpaper_url', 'TEXT');
 }
 
@@ -203,6 +205,8 @@ function mapMessage(row) {
     replyTo:        row.reply_to  != null ? row.reply_to  : null,
     deleted:        row.deleted   ? 1 : 0,
     reactions:      parseJson(row.reactions, {}),
+    mediaType:      row.media_type || null,
+    filename:       row.filename   || null,
   };
 }
 
@@ -410,13 +414,13 @@ async function listConversationsForUser(userId) {
 // ---------------------------------------------------------------------------
 // Messages
 // ---------------------------------------------------------------------------
-async function createMessage(conversationId, senderId, body, status = 'sent') {
+async function createMessage(conversationId, senderId, body, status = 'sent', mediaType = null, filename = null) {
   const id = randomUUID();
   const ts = now();
   await run(
-    `INSERT INTO messages (id, conversation_id, sender_id, body, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [id, conversationId, senderId, body, status, ts]
+    `INSERT INTO messages (id, conversation_id, sender_id, body, status, created_at, media_type, filename)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, conversationId, senderId, body || null, status, ts, mediaType || null, filename || null]
   );
   return getMessage(id);
 }
