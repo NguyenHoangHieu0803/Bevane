@@ -1198,6 +1198,66 @@ html.theme-light .message-list.has-wallpaper .message--them {
   .call-overlay__controls { padding: 10px 20px; }
 }
 
+/* -------------------- Wallpaper editor -------------------- */
+#wallpaper-editor {
+  position: fixed; inset: 0; z-index: 950;
+  background: #000;
+  display: flex; flex-direction: column;
+}
+#wallpaper-editor[hidden] { display: none; }
+.wpeditor { display: flex; flex-direction: column; height: 100%; }
+
+.wpeditor__header,
+.wpeditor__footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; flex-shrink: 0;
+  background: rgba(0,0,0,.72); backdrop-filter: blur(8px);
+  color: #fff; gap: 8px;
+}
+.wpeditor__title { font-size: .95rem; font-weight: 700; flex: 1; text-align: center; }
+
+.wpeditor__btn {
+  background: none; border: none; color: rgba(255,255,255,.85);
+  font-size: .9rem; padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  white-space: nowrap;
+}
+.wpeditor__btn--primary {
+  background: var(--primary); color: var(--primary-ink);
+  font-weight: 700; padding: 8px 18px;
+}
+.wpeditor__btn--primary:hover { opacity: .9; }
+
+.wpeditor__viewport {
+  flex: 1 1 auto; overflow: hidden; position: relative;
+  cursor: grab; touch-action: none; user-select: none;
+  background: #000;
+}
+.wpeditor__viewport.dragging { cursor: grabbing; }
+
+#wpeditor-img {
+  position: absolute; display: block;
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
+  transform-origin: top left;
+}
+
+.wpeditor__footer { gap: 10px; }
+.wpeditor__iconbtn {
+  background: rgba(255,255,255,.15); border: none; color: #fff;
+  width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
+  font-size: 1.3rem; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.wpeditor__iconbtn:hover { background: rgba(255,255,255,.3); }
+.wpeditor__slider { flex: 1 1 auto; accent-color: var(--primary); min-width: 0; }
+
+/* -------------------- message-list wallpaper -------------------- */
+.message-list.has-wallpaper {
+  background-color: #000;   /* fills any uncovered area */
+  background-size: cover;
+  background-position: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }

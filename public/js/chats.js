@@ -86,7 +86,8 @@ export async function openThread(conversationId, peer) {
 
   const listEl = $('#message-list');
   clear(listEl);
-  applyWallpaper(listEl, peer?.wallpaperUrl || null);
+  // Peer's wallpaper takes priority; fall back to own wallpaper so whoever set it both see it.
+  applyWallpaper(listEl, peer?.wallpaperUrl || state.wallpaperUrl || null);
   try {
     const messages = await api.listMessages(conversationId, { limit: 50 });
     for (const m of messages) appendMessage(m);
@@ -332,12 +333,18 @@ function applyWallpaper(listEl, url) {
 
 export function initChats() {
   // Wallpaper changes (from profile)
-  // Wallpaper broadcast from server: update background if the active peer changed it.
+  // Wallpaper broadcast: apply to the active chat regardless of who changed it,
+  // and update own state so "reopen" fallback works.
   on('wallpaper_changed', ({ userId, wallpaperUrl }) => {
+    const url = wallpaperUrl || null;
+    // Track own wallpaper so openThread fallback works after a reload
+    if (userId === state.userId) state.wallpaperUrl = url;
+    // Update active peer's cached wallpaperUrl
     if (state.activePeer && state.activePeer.id === userId) {
-      applyWallpaper($('#message-list'), wallpaperUrl || null);
-      state.activePeer = { ...state.activePeer, wallpaperUrl: wallpaperUrl || null };
+      state.activePeer = { ...state.activePeer, wallpaperUrl: url };
     }
+    // Always apply to the visible chat background
+    if (state.activeConversationId) applyWallpaper($('#message-list'), url);
   });
 
   // New conversation -> open peer picker
