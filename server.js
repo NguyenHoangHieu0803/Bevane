@@ -187,10 +187,33 @@ app.post('/api/users', wrap(async (req, res) => {
   res.status(201).json({ id: user.id, displayName: user.displayName, createdAt: user.createdAt });
 }));
 
+// Visibility rules (hard-coded):
+//   NHU  (e2eb7360) → can only see HIEU (a807c3ba)
+//   HIEU (a807c3ba) → can see everyone
+//   everyone else  → cannot see NHU  (e2eb7360)
+const ID_HIEU = 'a807c3ba-567d-49ed-8c4b-2e9e2864bc24';
+const ID_NHU  = 'e2eb7360-dc34-45d6-bc67-682c909fc9f0';
+
+function applyVisibility(users, requesterId) {
+  if (requesterId === ID_NHU) {
+    // Nhu can only see Hieu
+    return users.filter((u) => u.id === ID_HIEU);
+  }
+  if (requesterId !== ID_HIEU) {
+    // Everyone else cannot see Nhu
+    return users.filter((u) => u.id !== ID_NHU);
+  }
+  // Hieu sees everyone
+  return users;
+}
+
 app.get('/api/users', wrap(async (req, res) => {
+  const session = await requireAuth(req, res);
+  if (!session) return;
   const excludeId = req.query.excludeId;
   let users = await db.listUsers();
   if (excludeId) users = users.filter((u) => u.id !== excludeId);
+  users = applyVisibility(users, session.userId);
   res.json(users.map(withPresence));
 }));
 
