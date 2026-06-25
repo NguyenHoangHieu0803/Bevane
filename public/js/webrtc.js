@@ -491,12 +491,12 @@ async function togglePip() {
 // ---------------------------------------------------------------- filters
 const FILTERS = [
   { name: 'Bình thường', value: '' },
-  { name: 'Vintage',     value: 'sepia(0.45) contrast(1.1) brightness(0.9) saturate(0.85)' },
-  { name: 'Lạnh',       value: 'hue-rotate(200deg) saturate(1.3) brightness(1.05) contrast(1.05)' },
-  { name: 'Nóng',       value: 'sepia(0.25) saturate(1.5) brightness(1.05) contrast(1.02)' },
-  { name: 'Đen trắng',  value: 'grayscale(1) contrast(1.1)' },
-  { name: 'Hồng',       value: 'sepia(0.2) hue-rotate(300deg) saturate(1.6) brightness(1.05)' },
-  { name: 'Neon',        value: 'saturate(2) contrast(1.15) brightness(1.05)' },
+  { name: 'Vintage',     value: 'sepia(0.18) contrast(1.05) brightness(0.95) saturate(0.9)' },
+  { name: 'Lạnh',       value: 'hue-rotate(15deg) saturate(1.1) brightness(1.02)' },
+  { name: 'Nóng',       value: 'sepia(0.12) saturate(1.2) brightness(1.03)' },
+  { name: 'Đen trắng',  value: 'grayscale(0.85) contrast(1.05)' },
+  { name: 'Hồng',       value: 'sepia(0.08) hue-rotate(320deg) saturate(1.15) brightness(1.02)' },
+  { name: 'Sáng',       value: 'brightness(1.12) contrast(0.95) saturate(1.05)' },
 ];
 function applyFilter(value) {
   $('#remote-video').style.filter = value;
