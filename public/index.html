@@ -211,25 +211,23 @@
             </button>
           </div>
 
-          <!-- Attach popover -->
-          <div id="attach-menu" class="attach-menu" hidden role="menu">
-            <button class="attach-menu__item" id="attach-image-btn" type="button" role="menuitem">
-              <span aria-hidden="true">🖼️</span> Hình ảnh
-            </button>
-            <button class="attach-menu__item" id="attach-file-btn" type="button" role="menuitem">
-              <span aria-hidden="true">📄</span> Tệp đính kèm
-            </button>
-          </div>
-          <input id="media-image-input" type="file" accept="image/*" hidden aria-hidden="true" />
-          <input id="media-file-input"  type="file" hidden aria-hidden="true" />
-
           <form id="message-form" class="message-form">
             <label for="message-input" class="visually-hidden">Type a message</label>
 
-            <!-- Attach button -->
+            <!-- Attach button + popover (inside form so position:absolute is relative to form) -->
             <button id="attach-btn" class="iconbtn" type="button" aria-label="Attach image or file" aria-haspopup="true" aria-expanded="false">
               <span aria-hidden="true">＋</span>
             </button>
+            <div id="attach-menu" class="attach-menu" hidden role="menu">
+              <button class="attach-menu__item" id="attach-image-btn" type="button" role="menuitem">
+                <span aria-hidden="true">🖼️</span> Hình ảnh
+              </button>
+              <button class="attach-menu__item" id="attach-file-btn" type="button" role="menuitem">
+                <span aria-hidden="true">📄</span> Tệp đính kèm
+              </button>
+            </div>
+            <input id="media-image-input" type="file" accept="image/*" hidden aria-hidden="true" />
+            <input id="media-file-input"  type="file" hidden aria-hidden="true" />
 
             <!-- Voice recording mode (replaces text input while recording) -->
             <div id="voice-bar" class="voice-bar" hidden aria-live="polite">
