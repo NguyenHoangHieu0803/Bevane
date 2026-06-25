@@ -691,13 +691,19 @@ html.theme-light .message-list.has-wallpaper .message--them {
   pointer-events: none;  /* transparent — events fall through to video */
 }
 
-/* Top bar: quality badge + peer name + status */
+/* Top bar: quality badge + peer name + status — hidden by default, tap to reveal */
 .call-hud__top {
   padding: calc(env(safe-area-inset-top) + 14px) 16px 24px;
   background: linear-gradient(to bottom, rgba(0,0,0,.65) 0%, transparent 100%);
   text-align: center;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity .35s ease;
 }
+/* Always visible while ringing/incoming or when user tapped */
+.call-overlay--ringing .call-hud__top,
+.call-overlay.hud-visible .call-hud__top { opacity: 1; }
+
 .call-overlay__peer   { font-size: 1.4rem; font-weight: 700; color: #fff; margin: 4px 0 4px; }
 .call-overlay__status { font-size: .95rem; color: rgba(255,255,255,.75); margin: 0; }
 
@@ -1098,6 +1104,72 @@ html.theme-light .message-list.has-wallpaper .message--them {
   margin-bottom: 2px;
 }
 .call-overlay--audio .call-quality { display: none; }
+
+/* -------------------- Call filter picker -------------------- */
+.call-filter-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 16px 4px;
+  scrollbar-width: none;
+}
+.call-filter-picker::-webkit-scrollbar { display: none; }
+.call-filter-chip {
+  flex: 0 0 auto;
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  border: 2px solid transparent;
+  font-size: .82rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+}
+.call-filter-chip.active {
+  background: rgba(255,255,255,.25);
+  border-color: rgba(255,255,255,.6);
+}
+
+/* -------------------- Minimized call bar -------------------- */
+.call-minimized-bar {
+  display: none; /* shown only via .call-overlay--minimized */
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  pointer-events: auto;
+}
+.call-overlay--minimized {
+  /* Collapse to a small floating chip in the top-right */
+  inset: auto !important;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  right: 12px;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  background: rgba(8,12,22,0.9);
+  border-radius: 40px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+}
+.call-overlay--minimized #remote-video,
+.call-overlay--minimized .call-video--local,
+.call-overlay--minimized .call-audio-avatar,
+.call-overlay--minimized .call-hud { display: none !important; }
+.call-overlay--minimized .call-minimized-bar { display: flex; }
+.call-minimized-bar__dot  { font-size: .7rem; line-height: 1; }
+.call-minimized-bar__name { font-size: .9rem; font-weight: 600; color: #fff; white-space: nowrap; }
+.call-minimized-bar__timer{ font-size: .8rem; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
+.call-minimized-bar__expand {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  background: rgba(255,255,255,.18);
+  border: none; border-radius: 50%;
+  color: #fff; font-size: .95rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
 
 /* Desktop two-pane empty state — only rendered on desktop (see media queries). */
 .thread-empty { display: none; }

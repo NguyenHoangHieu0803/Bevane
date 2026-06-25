@@ -32,6 +32,19 @@ function resetCall() { call = null; }
 
 // ---------------------------------------------------------------- UI helpers
 function overlay() { return $('#call-overlay'); }
+
+let _hudTimer = null;
+function showHud() {
+  overlay().classList.add('hud-visible');
+  clearTimeout(_hudTimer);
+  _hudTimer = setTimeout(() => overlay().classList.remove('hud-visible'), 4000);
+}
+function clearHud() {
+  clearTimeout(_hudTimer);
+  _hudTimer = null;
+  overlay().classList.remove('hud-visible');
+}
+
 function setStatus(text) {
   $('#call-status-text').textContent = text;
 }
@@ -48,8 +61,14 @@ function showOverlay(peerName) {
   const lv = $('#local-video');
   lv.style.top = lv.style.left = lv.style.right = lv.style.bottom = '';
   show(ov);
+  showHud(); // reveal HUD briefly then auto-hide
 }
 function hideOverlay() {
+  clearHud();
+  expandCall(); // exit minimized mode if active
+  applyFilter(''); // reset any video filter
+  const fp = $('#call-filter-picker');
+  if (fp) fp.hidden = true;
   const ov = overlay();
   ov.classList.remove('call-overlay--ringing');
   hide(ov);
@@ -119,6 +138,8 @@ function setControls({ accept, decline, mute, camera, end }) {
   $('#call-switchvideo-btn').hidden = !(inCall && call && call.callType === 'voice');
   $('#call-switchcam-btn').hidden = !(inCall && isVideo);
   $('#call-pip-btn').hidden = !(inCall && isVideo);
+  $('#call-filter-btn').hidden = !inCall;
+  $('#call-minimize-btn').hidden = !inCall;
 }
 
 // ---------------------------------------------------------------- media
@@ -441,6 +462,8 @@ async function switchCamera() {
     if (old) { call.localStream.removeTrack(old); old.stop(); }
     call.localStream.addTrack(newTrack);
     $('#local-video').srcObject = call.localStream;
+    // Mirror only for front camera
+    $('#local-video').style.transform = facing === 'user' ? '' : 'scaleX(1)';
     announce(`Switched to ${facing === 'user' ? 'front' : 'rear'} camera.`);
     toast(`${facing === 'user' ? 'Front' : 'Rear'} camera`);
   } catch (e) {
@@ -465,6 +488,47 @@ async function togglePip() {
   }
 }
 
+// ---------------------------------------------------------------- filters
+const FILTERS = [
+  { name: 'Bình thường', value: '' },
+  { name: 'Vintage',     value: 'sepia(0.45) contrast(1.1) brightness(0.9) saturate(0.85)' },
+  { name: 'Lạnh',       value: 'hue-rotate(200deg) saturate(1.3) brightness(1.05) contrast(1.05)' },
+  { name: 'Nóng',       value: 'sepia(0.25) saturate(1.5) brightness(1.05) contrast(1.02)' },
+  { name: 'Đen trắng',  value: 'grayscale(1) contrast(1.1)' },
+  { name: 'Hồng',       value: 'sepia(0.2) hue-rotate(300deg) saturate(1.6) brightness(1.05)' },
+  { name: 'Neon',        value: 'saturate(2) contrast(1.15) brightness(1.05)' },
+];
+function applyFilter(value) {
+  $('#remote-video').style.filter = value;
+  $('#local-video').style.filter  = value;
+}
+
+// ---------------------------------------------------------------- minimize / expand
+let _miniTimer = null;
+function startMiniTimer() {
+  const el = $('#call-mini-timer');
+  _miniTimer = setInterval(() => {
+    if (!call || !call.startedAt) return;
+    const s  = Math.floor((Date.now() - call.startedAt) / 1000);
+    const mm = String(Math.floor(s / 60)).padStart(2, '0');
+    const ss = String(s % 60).padStart(2, '0');
+    if (el) el.textContent = `${mm}:${ss}`;
+  }, 1000);
+}
+function minimizeCall() {
+  if (!call) return;
+  overlay().classList.add('call-overlay--minimized');
+  const nameEl = $('#call-mini-name');
+  if (nameEl) nameEl.textContent = call.peerName || '';
+  clearInterval(_miniTimer);
+  startMiniTimer();
+}
+function expandCall() {
+  overlay().classList.remove('call-overlay--minimized');
+  clearInterval(_miniTimer);
+  _miniTimer = null;
+}
+
 // ---------------------------------------------------------------- init
 export function initCalls() {
   $('#call-accept-btn').addEventListener('click', acceptCall);
@@ -483,16 +547,43 @@ export function initCalls() {
     $('#call-sheet-toggle').setAttribute('aria-label', isNowExpanded ? 'Collapse controls' : 'Expand controls');
   });
 
+  // Tap anywhere on overlay (video area) to reveal / re-reveal the HUD
+  $('#call-overlay').addEventListener('click', (e) => {
+    // Ignore taps on interactive controls so they don't fight the toggle
+    if (e.target.closest('button, input, select')) return;
+    showHud();
+  });
+
   // Draggable self-view
   makeDraggable($('#local-video'));
 
   // Extended controls
-  $('#call-switchcam-btn').addEventListener('click', switchCamera);   // WORKING where supported
-  $('#call-pip-btn').addEventListener('click', togglePip);            // WORKING where supported
+  $('#call-switchcam-btn').addEventListener('click', switchCamera);
+  $('#call-pip-btn').addEventListener('click', togglePip);
   $('#call-speaker-btn').addEventListener('click', () => comingSoon('Speaker toggle'));
   $('#call-hold-btn').addEventListener('click', () => comingSoon('Hold'));
   $('#call-addparticipant-btn').addEventListener('click', () => comingSoon('Add participant'));
   $('#call-switchvideo-btn').addEventListener('click', () => comingSoon('Switch to video'));
+
+  // Minimize / expand
+  $('#call-minimize-btn').addEventListener('click', minimizeCall);
+  $('#call-mini-expand-btn').addEventListener('click', expandCall);
+
+  // Filter picker — build chips once, toggle visibility on button click
+  const filterPicker = $('#call-filter-picker');
+  FILTERS.forEach(({ name, value }, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'call-filter-chip' + (i === 0 ? ' active' : '');
+    btn.textContent = name;
+    btn.addEventListener('click', () => {
+      filterPicker.querySelectorAll('.call-filter-chip').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyFilter(value);
+    });
+    filterPicker.appendChild(btn);
+  });
+  $('#call-filter-btn').addEventListener('click', () => { filterPicker.hidden = !filterPicker.hidden; });
 
   on('call:start', ({ peer, callType }) => startCall(peer, callType));
 

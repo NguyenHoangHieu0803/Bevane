@@ -543,6 +543,9 @@
                 aria-label="Collapse controls" aria-expanded="true">
           <span class="call-sheet__handle-bar"></span>
         </button>
+        <!-- Filter picker row (hidden until filter btn tapped) -->
+        <div id="call-filter-picker" class="call-filter-picker" hidden role="group" aria-label="Video filter"></div>
+
         <div class="call-sheet__body">
           <div class="call-overlay__controls" role="group" aria-label="Call controls">
             <!-- Incoming: accept / decline -->
@@ -560,6 +563,12 @@
               <span aria-hidden="true">📷</span><span class="callbtn__label">Camera</span>
             </button>
             <!-- Secondary buttons -->
+            <button id="call-filter-btn"         class="callbtn" type="button" aria-label="Video filter"       hidden>
+              <span aria-hidden="true">✨</span><span class="callbtn__label">Filter</span>
+            </button>
+            <button id="call-minimize-btn"        class="callbtn" type="button" aria-label="Minimize call"     hidden>
+              <span aria-hidden="true">⬇️</span><span class="callbtn__label">Thu nhỏ</span>
+            </button>
             <button id="call-switchcam-btn"      class="callbtn" type="button" aria-label="Switch camera"    hidden>
               <span aria-hidden="true">🔄</span><span class="callbtn__label">Flip</span>
             </button>
@@ -585,6 +594,14 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Minimized floating bar (shown when call is minimized) -->
+    <div class="call-minimized-bar" id="call-minimized-bar" aria-label="Active call">
+      <span class="call-minimized-bar__dot" aria-hidden="true">🟢</span>
+      <span id="call-mini-name" class="call-minimized-bar__name"></span>
+      <span id="call-mini-timer" class="call-minimized-bar__timer">00:00</span>
+      <button id="call-mini-expand-btn" class="call-minimized-bar__expand" type="button" aria-label="Expand call">⤢</button>
     </div>
   </div>
 
