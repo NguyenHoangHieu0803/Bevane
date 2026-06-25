@@ -679,15 +679,6 @@ export function initChats() {
     if (!tonePicker.hidden) tonePicker.querySelector('button')?.focus();
   });
 
-  // Attach menu (all media = stubs via comingSoon)
-  $('#attach-btn').addEventListener('click', () => emit('attach:open', {}));
-  $('#attach-sheet-close')?.addEventListener('click', () => hide($('#attach-sheet')));
-  for (const b of document.querySelectorAll('[data-attach]')) {
-    b.addEventListener('click', () => { comingSoon(`Send ${b.dataset.attach}`); hide($('#attach-sheet')); });
-  }
-  on('attach:open', () => { show($('#attach-sheet')); $('#attach-sheet-close')?.focus(); });
-  $('#attach-sheet')?.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide($('#attach-sheet')); });
-
   // Reply / delete / translate from the message action sheet
   on('msg:reply', setReply);
   on('msg:delete', ({ id }) => deleteMessageLocal(id));

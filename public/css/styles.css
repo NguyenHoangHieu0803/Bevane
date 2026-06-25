@@ -664,6 +664,7 @@ html.theme-light .message-list.has-wallpaper .message--them {
   touch-action: none;
   box-shadow: 0 4px 16px rgba(0,0,0,.5);
   user-select: none;
+  transform: scaleX(-1); /* mirror front camera for natural selfie preview */
 }
 .call-video--local.dragging { cursor: grabbing; }
 
