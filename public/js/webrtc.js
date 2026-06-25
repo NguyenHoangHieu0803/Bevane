@@ -65,8 +65,11 @@ function showOverlay(peerName) {
 }
 function hideOverlay() {
   clearHud();
-  expandCall(); // exit minimized mode if active
-  applyFilter(''); // reset any video filter
+  // Clean up chip (call may have ended while minimized)
+  clearInterval(_miniTimer);
+  _miniTimer = null;
+  $('#call-chip').hidden = true;
+  applyFilter('');
   const fp = $('#call-filter-picker');
   if (fp) fp.hidden = true;
   const ov = overlay();
@@ -506,7 +509,7 @@ function applyFilter(value) {
 // ---------------------------------------------------------------- minimize / expand
 let _miniTimer = null;
 function startMiniTimer() {
-  const el = $('#call-mini-timer');
+  const el = $('#call-chip-timer');
   _miniTimer = setInterval(() => {
     if (!call || !call.startedAt) return;
     const s  = Math.floor((Date.now() - call.startedAt) / 1000);
@@ -517,16 +520,19 @@ function startMiniTimer() {
 }
 function minimizeCall() {
   if (!call) return;
-  overlay().classList.add('call-overlay--minimized');
-  const nameEl = $('#call-mini-name');
+  hide(overlay());        // hide modal so aria-modal stops trapping the app
+  const chip = $('#call-chip');
+  const nameEl = $('#call-chip-name');
   if (nameEl) nameEl.textContent = call.peerName || '';
+  chip.hidden = false;
   clearInterval(_miniTimer);
   startMiniTimer();
 }
 function expandCall() {
-  overlay().classList.remove('call-overlay--minimized');
+  $('#call-chip').hidden = true;
   clearInterval(_miniTimer);
   _miniTimer = null;
+  show(overlay());        // restore overlay
 }
 
 // ---------------------------------------------------------------- init
@@ -567,7 +573,7 @@ export function initCalls() {
 
   // Minimize / expand
   $('#call-minimize-btn').addEventListener('click', minimizeCall);
-  $('#call-mini-expand-btn').addEventListener('click', expandCall);
+  $('#call-chip-expand-btn').addEventListener('click', expandCall);
 
   // Filter picker — build chips once, toggle visibility on button click
   const filterPicker = $('#call-filter-picker');

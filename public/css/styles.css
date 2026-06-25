@@ -1131,37 +1131,26 @@ html.theme-light .message-list.has-wallpaper .message--them {
   border-color: rgba(255,255,255,.6);
 }
 
-/* -------------------- Minimized call bar -------------------- */
-.call-minimized-bar {
-  display: none; /* shown only via .call-overlay--minimized */
+/* -------------------- Minimized call chip (separate from overlay) -------- */
+.call-chip {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: 12px;
+  z-index: 700; /* above the overlay so it's always tappable */
+  display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  pointer-events: auto;
-}
-.call-overlay--minimized {
-  /* Collapse to a small floating chip in the top-right */
-  inset: auto !important;
-  top: calc(env(safe-area-inset-top, 0px) + 8px);
-  right: 12px;
-  width: auto;
-  min-width: 0;
-  height: auto;
-  background: rgba(8,12,22,0.9);
+  background: rgba(8,12,22,0.92);
   border-radius: 40px;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   box-shadow: 0 4px 20px rgba(0,0,0,.5);
 }
-.call-overlay--minimized #remote-video,
-.call-overlay--minimized .call-video--local,
-.call-overlay--minimized .call-audio-avatar,
-.call-overlay--minimized .call-hud { display: none !important; }
-.call-overlay--minimized .call-minimized-bar { display: flex; }
-.call-minimized-bar__dot  { font-size: .7rem; line-height: 1; }
-.call-minimized-bar__name { font-size: .9rem; font-weight: 600; color: #fff; white-space: nowrap; }
-.call-minimized-bar__timer{ font-size: .8rem; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
-.call-minimized-bar__expand {
+.call-chip__dot   { font-size: .7rem; line-height: 1; }
+.call-chip__name  { font-size: .9rem; font-weight: 600; color: #fff; white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+.call-chip__timer { font-size: .8rem; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
+.call-chip__expand {
   display: flex; align-items: center; justify-content: center;
   width: 28px; height: 28px;
   background: rgba(255,255,255,.18);

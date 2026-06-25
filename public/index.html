@@ -596,13 +596,14 @@
       </div>
     </div>
 
-    <!-- Minimized floating bar (shown when call is minimized) -->
-    <div class="call-minimized-bar" id="call-minimized-bar" aria-label="Active call">
-      <span class="call-minimized-bar__dot" aria-hidden="true">🟢</span>
-      <span id="call-mini-name" class="call-minimized-bar__name"></span>
-      <span id="call-mini-timer" class="call-minimized-bar__timer">00:00</span>
-      <button id="call-mini-expand-btn" class="call-minimized-bar__expand" type="button" aria-label="Expand call">⤢</button>
-    </div>
+  </div>
+
+  <!-- Call chip — separate from overlay so aria-modal doesn't trap the app -->
+  <div id="call-chip" class="call-chip" hidden aria-label="Active call">
+    <span class="call-chip__dot" aria-hidden="true">🟢</span>
+    <span id="call-chip-name" class="call-chip__name"></span>
+    <span id="call-chip-timer" class="call-chip__timer">00:00</span>
+    <button id="call-chip-expand-btn" class="call-chip__expand" type="button" aria-label="Expand call">⤢</button>
   </div>
 
   <!-- ===================== Toast ===================== -->

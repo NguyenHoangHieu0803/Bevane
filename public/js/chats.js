@@ -205,7 +205,10 @@ function downloadFromDataUrl(dataUrl, filename) {
 
 function openLightbox(src) {
   const lb = document.getElementById('img-lightbox');
-  document.getElementById('img-lightbox-img').src = src;
+  const img = document.getElementById('img-lightbox-img');
+  img.src = src;
+  img.style.transform = '';
+  img.style.opacity = '';
   lb.hidden = false;
   lb.focus?.();
 }
@@ -213,7 +216,43 @@ function openLightbox(src) {
 function closeLightbox() {
   const lb = document.getElementById('img-lightbox');
   lb.hidden = true;
-  document.getElementById('img-lightbox-img').src = '';
+  const img = document.getElementById('img-lightbox-img');
+  img.style.transform = '';
+  img.style.opacity = '';
+  img.src = '';
+}
+
+// Swipe-down gesture on the lightbox image
+function initLightboxSwipe() {
+  const lb  = document.getElementById('img-lightbox');
+  const img = document.getElementById('img-lightbox-img');
+  let startY = 0, dragging = false;
+
+  lb.addEventListener('touchstart', (e) => {
+    startY = e.touches[0].clientY;
+    dragging = true;
+  }, { passive: true });
+
+  lb.addEventListener('touchmove', (e) => {
+    if (!dragging) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0) { // only allow dragging downward
+      img.style.transform = `translateY(${dy}px)`;
+      img.style.opacity = String(Math.max(0, 1 - dy / 250));
+    }
+  }, { passive: true });
+
+  lb.addEventListener('touchend', (e) => {
+    if (!dragging) return;
+    dragging = false;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (dy > 90) {
+      closeLightbox();
+    } else {
+      img.style.transform = '';
+      img.style.opacity = '';
+    }
+  });
 }
 
 function appendMessage(m, clientTempId) {
@@ -585,6 +624,7 @@ export function initChats() {
   // Lightbox close
   document.getElementById('img-lightbox').addEventListener('click', closeLightbox);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+  initLightboxSwipe();
 
   // Attach menu toggle
   const attachMenu = document.getElementById('attach-menu');
